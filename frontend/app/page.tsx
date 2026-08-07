@@ -7,7 +7,6 @@ import {
   Sparkles,
   Play,
   Pause,
-  RotateCcw,
   CheckCircle2,
   CircleDashed,
   Brain,
@@ -15,10 +14,21 @@ import {
   Layers,
   FileText,
   Zap,
-  ChevronRight,
   ShieldAlert,
   Sliders,
+  Edit3,
+  Check,
+  ArrowRight,
+  Eye,
 } from "lucide-react";
+
+type PipelineStatus =
+  | "idle"
+  | "planning"
+  | "waiting_for_approval"
+  | "drafting"
+  | "summarizing"
+  | "completed";
 
 interface SubSectionTask {
   sub_section_id?: string;
@@ -33,17 +43,24 @@ interface SubSectionTask {
 }
 
 export default function HomePage() {
-  // State
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
+  // Pipeline State
+  const [pipelineStatus, setPipelineStatus] = useState<PipelineStatus>("idle");
   const [statusMessage, setStatusMessage] = useState("Ready to draft");
   const [currentNode, setCurrentNode] = useState<string>("idle");
+  const [sessionId, setSessionId] = useState<string | null>(null);
+
+  // Data State
   const [plan, setPlan] = useState<SubSectionTask[]>([]);
   const [currentTaskTitle, setCurrentTaskTitle] = useState<string>("");
   const [streamedProse, setStreamedProse] = useState<string>("");
   const [pastSummaries, setPastSummaries] = useState<string[]>([]);
   const [wordCount, setWordCount] = useState<number>(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Review Mode Editable State
+  const [editableTaskTitle, setEditableTaskTitle] = useState<string>("");
+  const [editableDirective, setEditableDirective] = useState<string>("");
+  const [editableSummary, setEditableSummary] = useState<string>("");
 
   // Form Config
   const [bookTitle, setBookTitle] = useState("The Power of Instinct");
@@ -59,12 +76,12 @@ export default function HomePage() {
 
   // Auto-scroll manuscript smoothly as tokens arrive
   useEffect(() => {
-    if (isGenerating && manuscriptEndRef.current) {
+    if (pipelineStatus === "drafting" && manuscriptEndRef.current) {
       manuscriptEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [streamedProse, isGenerating]);
+  }, [streamedProse, pipelineStatus]);
 
-  // Update word count automatically
+  // Update word count
   useEffect(() => {
     if (!streamedProse) {
       setWordCount(0);
@@ -74,32 +91,139 @@ export default function HomePage() {
     setWordCount(words);
   }, [streamedProse]);
 
-  // Function to start real-time SSE stream from FastAPI /api/write
+  // Read SSE stream helper
+  async function readSSEStream(response: Response) {
+    if (!response.body) throw new Error("ReadableStream not supported");
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith("data: ")) {
+          const rawJson = trimmed.slice(6);
+          try {
+            const data = JSON.parse(rawJson);
+
+            if (data.session_id && !sessionId) {
+              setSessionId(data.session_id);
+            }
+
+            // 1. Status event
+            if (data.type === "status") {
+              setStatusMessage(data.message || data.status);
+              if (data.current_node) {
+                setCurrentNode(data.current_node);
+                if (data.current_node === "plan_step") setPipelineStatus("planning");
+                else if (data.current_node === "execute_step") setPipelineStatus("drafting");
+                else if (data.current_node === "replan_step") setPipelineStatus("summarizing");
+              }
+            }
+
+            // 2. Plan event
+            else if (data.type === "plan" && Array.isArray(data.plan)) {
+              const newPlan: SubSectionTask[] = data.plan.map((item: any, idx: number) => ({
+                sub_section_id: item.sub_section_id || `Sub-${idx + 1}`,
+                title: item.title || `Sub-Section ${idx + 1}`,
+                one_sentence_summary: item.one_sentence_summary || "",
+                writing_directive: item.writing_directive || "",
+                status: idx === 0 ? "in_progress" : "pending",
+              }));
+              setPlan(newPlan);
+              if (newPlan.length > 0) {
+                setCurrentTaskTitle(newPlan[0].title);
+                setEditableTaskTitle(newPlan[0].title);
+                setEditableDirective(newPlan[0].writing_directive || "");
+              }
+            }
+
+            // 3. HITL Interrupt / Pause event
+            else if (data.type === "hitl_pause") {
+              setPipelineStatus("waiting_for_approval");
+              setStatusMessage("Review Mode: AI paused for human approval before drafting.");
+              setCurrentNode("human_review");
+              if (data.thread_id) setSessionId(data.thread_id);
+              if (data.target_task) setCurrentTaskTitle(data.target_task);
+
+              if (data.plan && Array.isArray(data.plan) && data.plan.length > 0) {
+                const currentTask = data.plan[0];
+                setEditableTaskTitle(currentTask.title || "");
+                setEditableDirective(currentTask.writing_directive || "");
+              }
+              if (data.past_steps && Array.isArray(data.past_steps) && data.past_steps.length > 0) {
+                setEditableSummary(data.past_steps[data.past_steps.length - 1]);
+              }
+            }
+
+            // 4. Token stream event
+            else if (data.type === "token") {
+              setPipelineStatus("drafting");
+              setStreamedProse((prev) => prev + data.content);
+              if (data.sub_section) {
+                setCurrentTaskTitle(data.sub_section);
+                setPlan((prevPlan) =>
+                  prevPlan.map((p) =>
+                    p.title === data.sub_section ? { ...p, status: "in_progress" } : p
+                  )
+                );
+              }
+            }
+
+            // 5. Replan event
+            else if (data.type === "replan") {
+              if (data.latest_summary) {
+                setPastSummaries((prev) => [...prev, data.latest_summary]);
+                setEditableSummary(data.latest_summary);
+              }
+              if (data.next_task) {
+                setCurrentTaskTitle(data.next_task);
+                setEditableTaskTitle(data.next_task);
+                setPlan((prevPlan) =>
+                  prevPlan.map((p) => {
+                    if (p.status === "in_progress") return { ...p, status: "completed" };
+                    if (p.title === data.next_task) return { ...p, status: "in_progress" };
+                    return p;
+                  })
+                );
+              }
+            }
+
+            // 6. Complete event
+            else if (data.type === "done") {
+              setPipelineStatus("completed");
+              setStatusMessage("Book generation complete!");
+              setCurrentNode("completed");
+              setPlan((prevPlan) => prevPlan.map((p) => ({ ...p, status: "completed" })));
+            }
+
+            // 7. Error event
+            else if (data.type === "error") {
+              setErrorMessage(data.message);
+              setPipelineStatus("idle");
+            }
+          } catch (err) {
+            console.warn("SSE chunk parse warning:", err);
+          }
+        }
+      }
+    }
+  }
+
+  // 1. Initialise / Start Generation
   async function startGeneration() {
-    setIsGenerating(true);
-    setIsPaused(false);
+    setPipelineStatus("planning");
     setErrorMessage(null);
     setStreamedProse("");
     setPastSummaries([]);
     setStatusMessage("Connecting to AI System...");
-
-    // Default 5-chapter roadmap pre-load while planner agent runs
-    const initialDefaultPlan: SubSectionTask[] = [
-      { title: "Chapter 1.1: Defining Instinct vs. Reflex vs. Intuition", status: "pending" },
-      { title: "Chapter 1.2: The Historical Psychological Context", status: "pending" },
-      { title: "Chapter 1.3: Henri Bergson's Philosophy of Conscious Intuition", status: "pending" },
-      { title: "Chapter 2.1: Deconstructing the Triune Brain Fallacy", status: "pending" },
-      { title: "Chapter 2.2: Antonio Damasio's Somatic Marker Hypothesis", status: "pending" },
-      { title: "Chapter 2.3: Gut Feelings as Rapid Data-Processing", status: "pending" },
-      { title: "Chapter 3.1: Recognition-Primed Decision (RPD) in High-Stakes Environments", status: "pending" },
-      { title: "Chapter 3.2: Epigenetics and Transgenerational Trauma", status: "pending" },
-      { title: "Chapter 4.1: The Oxytocin Paradox & In-Group/Out-Group Bias", status: "pending" },
-      { title: "Chapter 4.2: The Default Mode Network & Flow States", status: "pending" },
-      { title: "Chapter 5.1: Reintegrating Logic with Somatic Markers", status: "pending" },
-      { title: "Chapter 5.2: Healing Epigenetic Stress Through Environmental Design", status: "pending" },
-      { title: "Chapter 5.3: Cultivating Psychological Safety for Team Innovation", status: "pending" },
-    ];
-    setPlan(initialDefaultPlan);
 
     abortControllerRef.current = new AbortController();
 
@@ -120,142 +244,88 @@ export default function HomePage() {
         signal: abortControllerRef.current.signal,
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      if (!response.body) {
-        throw new Error("ReadableStream not supported by response");
-      }
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder("utf-8");
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n\n");
-        buffer = lines.pop() || "";
-
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (trimmed.startsWith("data: ")) {
-            const rawJson = trimmed.slice(6);
-            try {
-              const data = JSON.parse(rawJson);
-
-              // 1. Status event
-              if (data.type === "status") {
-                setStatusMessage(data.message || data.status);
-                if (data.current_node) {
-                  setCurrentNode(data.current_node);
-                }
-              }
-
-              // 2. Plan event (sub-sections generated)
-              else if (data.type === "plan" && Array.isArray(data.plan)) {
-                const newPlan: SubSectionTask[] = data.plan.map(
-                  (item: any, idx: number) => ({
-                    sub_section_id: item.sub_section_id || `Sub-${idx + 1}`,
-                    title: item.title || `Sub-Section ${idx + 1}`,
-                    one_sentence_summary: item.one_sentence_summary || "",
-                    writing_directive: item.writing_directive || "",
-                    status: idx === 0 ? "in_progress" : "pending",
-                  })
-                );
-                setPlan(newPlan);
-                if (newPlan.length > 0) {
-                  setCurrentTaskTitle(newPlan[0].title);
-                }
-              }
-
-              // 3. Token event (real-time streaming prose)
-              else if (data.type === "token") {
-                setStreamedProse((prev) => prev + data.content);
-                if (data.sub_section) {
-                  setCurrentTaskTitle(data.sub_section);
-                  // Update plan status
-                  setPlan((prevPlan) =>
-                    prevPlan.map((p) =>
-                      p.title === data.sub_section
-                        ? { ...p, status: "in_progress" }
-                        : p
-                    )
-                  );
-                }
-              }
-
-              // 4. Replan event (sub-section finished & compressed)
-              else if (data.type === "replan") {
-                if (data.latest_summary) {
-                  setPastSummaries((prev) => [...prev, data.latest_summary]);
-                }
-                if (data.next_task) {
-                  setCurrentTaskTitle(data.next_task);
-                  setPlan((prevPlan) =>
-                    prevPlan.map((p) => {
-                      if (p.status === "in_progress") {
-                        return { ...p, status: "completed" };
-                      }
-                      if (p.title === data.next_task) {
-                        return { ...p, status: "in_progress" };
-                      }
-                      return p;
-                    })
-                  );
-                }
-              }
-
-              // 5. Completion event
-              else if (data.type === "done") {
-                setIsGenerating(false);
-                setStatusMessage("Manuscript complete!");
-                setCurrentNode("completed");
-                setPlan((prevPlan) =>
-                  prevPlan.map((p) => ({ ...p, status: "completed" }))
-                );
-              }
-
-              // 6. Error event
-              else if (data.type === "error") {
-                setErrorMessage(data.message);
-                setIsGenerating(false);
-              }
-            } catch (err) {
-              console.warn("Failed to parse SSE JSON chunk:", rawJson, err);
-            }
-          }
-        }
-      }
+      if (!response.ok) throw new Error(`HTTP Error ${response.status}`);
+      await readSSEStream(response);
     } catch (err: any) {
       if (err.name !== "AbortError") {
-        console.error("Stream connection error:", err);
-        setErrorMessage(err.message || "Connection failed");
+        setErrorMessage(err.message || "Failed to start stream");
+        setPipelineStatus("idle");
       }
-    } finally {
-      setIsGenerating(false);
+    }
+  }
+
+  // 2. Resume Endpoint Call (Approve & Draft / Edit & Continue)
+  async function resumeGeneration(applyEdits: boolean = false) {
+    if (!sessionId) {
+      setErrorMessage("No active session ID found to resume.");
+      return;
+    }
+
+    setPipelineStatus("drafting");
+    setStatusMessage("Resuming generation...");
+    setErrorMessage(null);
+
+    abortControllerRef.current = new AbortController();
+
+    // Prepare updated plan / state
+    let updatedPlan = plan;
+    if (applyEdits && plan.length > 0) {
+      updatedPlan = plan.map((p, idx) =>
+        idx === 0
+          ? {
+              ...p,
+              title: editableTaskTitle || p.title,
+              writing_directive: editableDirective || p.writing_directive,
+            }
+          : p
+      );
+      setPlan(updatedPlan);
+    }
+
+    let updatedSummaries = pastSummaries;
+    if (applyEdits && editableSummary && pastSummaries.length > 0) {
+      updatedSummaries = [...pastSummaries];
+      updatedSummaries[updatedSummaries.length - 1] = editableSummary;
+      setPastSummaries(updatedSummaries);
+    }
+
+    try {
+      const response = await fetch("/api/resume", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "text/event-stream",
+        },
+        body: JSON.stringify({
+          thread_id: sessionId,
+          plan: updatedPlan,
+          past_steps: updatedSummaries,
+        }),
+        signal: abortControllerRef.current.signal,
+      });
+
+      if (!response.ok) throw new Error(`HTTP Error ${response.status}`);
+      await readSSEStream(response);
+    } catch (err: any) {
+      if (err.name !== "AbortError") {
+        setErrorMessage(err.message || "Failed to resume stream");
+        setPipelineStatus("waiting_for_approval");
+      }
     }
   }
 
   function handleStop() {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    setIsGenerating(false);
-    setStatusMessage("Generation stopped by user.");
+    if (abortControllerRef.current) abortControllerRef.current.abort();
+    setPipelineStatus("idle");
+    setStatusMessage("Generation paused by user.");
   }
 
-  // Calculate completed progress percentage
   const completedCount = plan.filter((p) => p.status === "completed").length;
-  const progressPercent =
-    plan.length > 0 ? Math.round((completedCount / plan.length) * 100) : 0;
+  const progressPercent = plan.length > 0 ? Math.round((completedCount / plan.length) * 100) : 0;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans flex flex-col selection:bg-cyan-500/30 selection:text-cyan-200">
-      {/* Top Navigation Bar */}
+      {/* Top Header */}
       <header className="h-16 border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-xl sticky top-0 z-50 flex items-center justify-between px-6">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 p-0.5 shadow-lg shadow-cyan-500/20">
@@ -264,49 +334,50 @@ export default function HomePage() {
             </div>
           </div>
           <div>
-            <h1 className="text-base font-bold tracking-tight text-slate-100 flex items-center gap-2">
+            <h1 className="text-base font-bold text-slate-100 flex items-center gap-2">
               Scriptorium AI
-              <span className="text-[10px] uppercase tracking-widest font-semibold px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-                LangGraph v2
+              <span className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                HITL Redis Checkpoint
               </span>
             </h1>
-            <p className="text-xs text-slate-400 font-medium">
-              Context-Isolated Book Generation Pipeline
-            </p>
+            <p className="text-xs text-slate-400">Context-Isolated SSE Pipeline with Review Gates</p>
           </div>
         </div>
 
-        {/* Action Controls */}
         <div className="flex items-center gap-3">
           <button
             onClick={() => setShowConfig(!showConfig)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-800 bg-slate-900/80 text-xs font-medium text-slate-300 hover:text-white hover:border-slate-700 transition"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-800 bg-slate-900/80 text-xs font-medium text-slate-300 hover:text-white"
           >
-            <Sliders className="h-3.5 w-3.5 text-cyan-400" />
-            Config
+            <Sliders className="h-3.5 w-3.5 text-cyan-400" /> Config
           </button>
 
-          {!isGenerating ? (
+          {pipelineStatus === "idle" || pipelineStatus === "completed" ? (
             <button
               onClick={startGeneration}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/25 transition active:scale-95"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/25"
             >
-              <Play className="h-4 w-4 fill-slate-950" />
-              Generate Manuscript
+              <Play className="h-4 w-4 fill-slate-950" /> Generate Manuscript
+            </button>
+          ) : pipelineStatus === "waiting_for_approval" ? (
+            <button
+              onClick={() => resumeGeneration(false)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/25"
+            >
+              <Check className="h-4 w-4 stroke-[3]" /> Approve & Resume
             </button>
           ) : (
             <button
               onClick={handleStop}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 font-bold text-xs hover:bg-rose-500/20 transition"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 font-bold text-xs"
             >
-              <Pause className="h-4 w-4 fill-rose-400" />
-              Stop Generation
+              <Pause className="h-4 w-4 fill-rose-400" /> Pause Pipeline
             </button>
           )}
         </div>
       </header>
 
-      {/* Book Config Overlay */}
+      {/* Config Drawer */}
       <AnimatePresence>
         {showConfig && (
           <motion.div
@@ -329,7 +400,7 @@ export default function HomePage() {
               </div>
               <div>
                 <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-1">
-                  Genre & Tone
+                  Genre
                 </label>
                 <input
                   type="text"
@@ -340,7 +411,7 @@ export default function HomePage() {
               </div>
               <div>
                 <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-1">
-                  Core Premise
+                  Premise
                 </label>
                 <input
                   type="text"
@@ -356,32 +427,37 @@ export default function HomePage() {
 
       {/* Main Container */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Left Sidebar: Progress Tracker */}
-        <aside className="w-80 border-r border-slate-800/80 bg-slate-900/40 flex flex-col justify-between hidden md:flex shrink-0">
-          <div className="p-4 flex-1 overflow-y-auto space-y-6">
+        {/* Left Sidebar: Progress Tracker & HITL Review Controls */}
+        <aside className="w-80 border-r border-slate-800/80 bg-slate-900/40 flex flex-col justify-between hidden md:flex shrink-0 p-4 space-y-6">
+          <div className="space-y-4 overflow-y-auto pr-1">
             {/* Status Panel */}
             <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <Layers className="h-3.5 w-3.5 text-cyan-400" />
-                  Pipeline State
+                  <Layers className="h-3.5 w-3.5 text-cyan-400" /> State Node
                 </span>
-                <span className="text-[11px] font-mono font-semibold text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded-md border border-cyan-500/20">
+                <span
+                  className={`text-[11px] font-mono font-semibold px-2 py-0.5 rounded border ${
+                    pipelineStatus === "waiting_for_approval"
+                      ? "bg-amber-500/10 text-amber-400 border-amber-500/30"
+                      : "bg-cyan-500/10 text-cyan-400 border-cyan-500/20"
+                  }`}
+                >
                   {currentNode}
                 </span>
               </div>
 
-              {/* Status Message */}
               <div className="flex items-center gap-2 text-xs font-medium text-slate-300">
-                {isGenerating ? (
-                  <CircleDashed className="h-4 w-4 text-cyan-400 animate-spin shrink-0" />
+                {pipelineStatus === "waiting_for_approval" ? (
+                  <Eye className="h-4 w-4 text-amber-400 animate-pulse" />
+                ) : pipelineStatus === "drafting" || pipelineStatus === "planning" ? (
+                  <CircleDashed className="h-4 w-4 text-cyan-400 animate-spin" />
                 ) : (
-                  <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                  <CheckCircle2 className="h-4 w-4 text-emerald-400" />
                 )}
                 <span className="truncate">{statusMessage}</span>
               </div>
 
-              {/* Progress Bar */}
               <div>
                 <div className="flex justify-between text-[11px] font-semibold text-slate-400 mb-1">
                   <span>Sub-Section Progress</span>
@@ -389,76 +465,114 @@ export default function HomePage() {
                 </div>
                 <div className="h-1.5 w-full bg-slate-950 rounded-full overflow-hidden">
                   <motion.div
-                    className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full"
-                    initial={{ width: 0 }}
+                    className="h-full bg-gradient-to-r from-cyan-500 to-blue-500"
                     animate={{ width: `${progressPercent}%` }}
-                    transition={{ duration: 0.3 }}
                   />
                 </div>
               </div>
             </div>
 
-            {/* Sub-Section Task List */}
+            {/* HITL Review Mode Card (when paused at interrupt_before) */}
+            <AnimatePresence>
+              {pipelineStatus === "waiting_for_approval" && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="p-4 rounded-xl bg-amber-950/30 border border-amber-500/40 text-amber-100 space-y-3 shadow-xl"
+                >
+                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-400">
+                    <Edit3 className="h-4 w-4" /> Review Mode Active
+                  </div>
+                  <p className="text-xs text-amber-200/80 leading-relaxed">
+                    The AI completed planning / memory compression and is paused at the checkpoint. Edit the target sub-section or summary below, then approve.
+                  </p>
+
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-semibold text-amber-300 uppercase block">
+                      Target Sub-Section Title
+                    </label>
+                    <input
+                      type="text"
+                      value={editableTaskTitle}
+                      onChange={(e) => setEditableTaskTitle(e.target.value)}
+                      className="w-full bg-slate-950 border border-amber-500/30 rounded-lg px-2.5 py-1 text-xs text-slate-100 focus:outline-none focus:border-amber-400"
+                    />
+
+                    {editableDirective && (
+                      <>
+                        <label className="text-[11px] font-semibold text-amber-300 uppercase block pt-1">
+                          Writing Directive
+                        </label>
+                        <textarea
+                          rows={3}
+                          value={editableDirective}
+                          onChange={(e) => setEditableDirective(e.target.value)}
+                          className="w-full bg-slate-950 border border-amber-500/30 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-amber-400 font-sans"
+                        />
+                      </>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-2 pt-1">
+                    <button
+                      onClick={() => resumeGeneration(false)}
+                      className="w-full py-2 px-3 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 transition"
+                    >
+                      <Check className="h-3.5 w-3.5 stroke-[3]" /> Approve & Draft Next Section
+                    </button>
+                    <button
+                      onClick={() => resumeGeneration(true)}
+                      className="w-full py-2 px-3 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 font-semibold text-xs flex items-center justify-center gap-1.5 transition"
+                    >
+                      <ArrowRight className="h-3.5 w-3.5" /> Edit & Continue
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Sub-Sections List */}
             <div>
               <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-1.5">
-                <FileText className="h-3.5 w-3.5 text-blue-400" />
-                Sub-Section Execution Queue ({plan.length})
+                <FileText className="h-3.5 w-3.5 text-blue-400" /> Sub-Section Queue ({plan.length})
               </h2>
-
               <div className="space-y-2">
-                {plan.map((item, index) => {
-                  const isCurrent = item.status === "in_progress";
-                  const isCompleted = item.status === "completed";
-
-                  return (
-                    <motion.div
-                      key={index}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.03 }}
-                      className={`p-2.5 rounded-lg border text-xs transition-all ${
-                        isCurrent
-                          ? "bg-cyan-950/40 border-cyan-500/50 text-cyan-100 shadow-md shadow-cyan-500/10"
-                          : isCompleted
-                          ? "bg-slate-900/60 border-slate-800/60 text-slate-400"
-                          : "bg-slate-950/40 border-slate-800/30 text-slate-500"
-                      }`}
-                    >
-                      <div className="flex items-start gap-2">
-                        {isCompleted ? (
-                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 mt-0.5 shrink-0" />
-                        ) : isCurrent ? (
-                          <CircleDashed className="h-3.5 w-3.5 text-cyan-400 animate-spin mt-0.5 shrink-0" />
-                        ) : (
-                          <div className="h-3.5 w-3.5 rounded-full border border-slate-700 mt-0.5 shrink-0" />
-                        )}
-                        <div className="flex-1 font-medium leading-tight">
-                          {item.title}
-                        </div>
-                      </div>
-                    </motion.div>
-                  );
-                })}
+                {plan.map((item, idx) => (
+                  <div
+                    key={idx}
+                    className={`p-2.5 rounded-lg border text-xs ${
+                      item.status === "in_progress"
+                        ? "bg-cyan-950/40 border-cyan-500/50 text-cyan-100"
+                        : item.status === "completed"
+                        ? "bg-slate-900/60 border-slate-800 text-slate-400"
+                        : "bg-slate-950/40 border-slate-800/30 text-slate-500"
+                    }`}
+                  >
+                    <div className="flex items-start gap-2">
+                      {item.status === "completed" ? (
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 mt-0.5 shrink-0" />
+                      ) : item.status === "in_progress" ? (
+                        <CircleDashed className="h-3.5 w-3.5 text-cyan-400 animate-spin mt-0.5 shrink-0" />
+                      ) : (
+                        <div className="h-3.5 w-3.5 rounded-full border border-slate-700 mt-0.5 shrink-0" />
+                      )}
+                      <span className="font-medium">{item.title}</span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
 
-          {/* Stats Footer */}
-          <div className="p-4 border-t border-slate-800/80 bg-slate-950/60 flex items-center justify-between text-xs text-slate-400 font-medium">
-            <span className="flex items-center gap-1">
-              <Feather className="h-3.5 w-3.5 text-cyan-400" />
-              Words: <strong className="text-slate-200">{wordCount}</strong>
-            </span>
-            <span className="flex items-center gap-1">
-              <Zap className="h-3.5 w-3.5 text-amber-400" />
-              Summaries: <strong className="text-slate-200">{pastSummaries.length}</strong>
-            </span>
+          <div className="pt-4 border-t border-slate-800 flex justify-between text-xs text-slate-400 font-medium">
+            <span>Words: <strong className="text-slate-200">{wordCount}</strong></span>
+            <span>Summaries: <strong className="text-slate-200">{pastSummaries.length}</strong></span>
           </div>
         </aside>
 
-        {/* Right Main Content Area: Manuscript Page */}
-        <main className="flex-1 overflow-y-auto bg-slate-950 flex flex-col items-center p-6 md:p-10 relative">
-          {/* Error Banner */}
+        {/* Main Content Area */}
+        <main className="flex-1 overflow-y-auto bg-slate-950 flex flex-col items-center p-6 md:p-10">
           {errorMessage && (
             <div className="w-full max-w-3xl mb-6 p-4 rounded-xl bg-rose-950/50 border border-rose-500/40 text-rose-200 flex items-start gap-3 text-sm">
               <ShieldAlert className="h-5 w-5 text-rose-400 shrink-0 mt-0.5" />
@@ -469,10 +583,8 @@ export default function HomePage() {
             </div>
           )}
 
-          {/* Manuscript Sheet */}
-          <div className="w-full max-w-3xl bg-slate-900/70 border border-slate-800/90 rounded-2xl p-8 md:p-14 shadow-2xl backdrop-blur-sm space-y-6 relative min-h-[750px]">
-            {/* Header / Meta */}
-            <div className="border-b border-slate-800 pb-6 flex items-center justify-between">
+          <div className="w-full max-w-3xl bg-slate-900/70 border border-slate-800 rounded-2xl p-8 md:p-14 shadow-2xl space-y-6 min-h-[750px] relative">
+            <div className="border-b border-slate-800 pb-6 flex justify-between items-center">
               <div>
                 <span className="text-xs font-bold uppercase tracking-widest text-cyan-400 block mb-1">
                   {genre}
@@ -481,19 +593,13 @@ export default function HomePage() {
                   {bookTitle}
                 </h2>
               </div>
-
-              {/* Status Badge */}
-              <div className="flex items-center gap-2">
-                {isGenerating && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-                    <span className="h-2 w-2 rounded-full bg-cyan-400 animate-ping" />
-                    Drafting Live
-                  </span>
-                )}
-              </div>
+              {pipelineStatus === "drafting" && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                  <span className="h-2 w-2 rounded-full bg-cyan-400 animate-ping" /> Drafting Live
+                </span>
+              )}
             </div>
 
-            {/* Current Active Task Banner */}
             {currentTaskTitle && (
               <div className="py-2 px-3.5 rounded-lg bg-cyan-950/30 border border-cyan-500/20 text-xs text-cyan-300 font-medium flex items-center gap-2">
                 <Sparkles className="h-3.5 w-3.5 text-cyan-400 shrink-0" />
@@ -501,46 +607,35 @@ export default function HomePage() {
               </div>
             )}
 
-            {/* Prose Content Area */}
-            {!streamedProse && !isGenerating ? (
+            {!streamedProse && pipelineStatus === "idle" ? (
               <div className="py-24 text-center space-y-4">
                 <BookOpen className="h-12 w-12 text-slate-700 mx-auto" />
                 <h3 className="text-lg font-serif font-semibold text-slate-400">
                   Manuscript Page Ready
                 </h3>
-                <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
-                  Click <strong>"Generate Manuscript"</strong> above to initiate the LangGraph agent pipeline. Watch real-time token streaming as the AI drafts sub-sections using the 6-step expansion framework.
+                <p className="text-xs text-slate-500 max-w-md mx-auto">
+                  Click <strong>"Generate Manuscript"</strong> to start the LangGraph pipeline with Redis checkpointer and HITL approval checkpoints.
                 </p>
               </div>
             ) : (
               <div className="prose prose-invert prose-cyan max-w-none font-serif text-slate-300 text-base md:text-lg leading-relaxed whitespace-pre-wrap">
                 {streamedProse}
-
-                {/* Animated Typing Cursor */}
-                {isGenerating && (
+                {pipelineStatus === "drafting" && (
                   <motion.span
                     animate={{ opacity: [1, 0] }}
                     transition={{ repeat: Infinity, duration: 0.7 }}
-                    className="inline-block w-2.5 h-5 ml-1 bg-cyan-400 rounded-xs align-middle"
+                    className="inline-block w-2.5 h-5 ml-1 bg-cyan-400 align-middle"
                   />
                 )}
               </div>
             )}
 
-            {/* Pulsing AI Thinking Indicator (between sub-sections) */}
-            <AnimatePresence>
-              {isGenerating && currentNode === "replan_step" && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="py-4 px-5 rounded-xl bg-slate-950/80 border border-cyan-500/30 flex items-center gap-3 text-xs text-cyan-300 font-mono shadow-lg shadow-cyan-500/10"
-                >
-                  <Brain className="h-4 w-4 text-cyan-400 animate-pulse shrink-0" />
-                  <span>Summarising sub-section prose and freeing context window memory...</span>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {pipelineStatus === "summarizing" && (
+              <div className="py-4 px-5 rounded-xl bg-slate-950/80 border border-cyan-500/30 flex items-center gap-3 text-xs text-cyan-300 font-mono">
+                <Brain className="h-4 w-4 text-cyan-400 animate-pulse" />
+                <span>Compressing completed sub-section memory...</span>
+              </div>
+            )}
 
             <div ref={manuscriptEndRef} />
           </div>
