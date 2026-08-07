@@ -4,12 +4,21 @@ utils.py — General-Purpose Backend Utilities
 Utility functions shared across the backend that don't belong to a single
 module (i.e., not prompt assembly, not state schema, not memory management).
 
-Exposes:
-  • load_story_bible()   — reads story_bible.md   (Context Anchor / world rules)
-  • load_system_rules()  — reads system_rules.md  (drafting agent hard constraints)
-  • load_book_outline()  — reads book_outline.md  (planner's scene-by-scene roadmap)
+Exposes individual loaders:
+  • load_story_bible()           — reads story_bible.md (Context Anchor)
+  • load_system_rules()          — reads system_rules.md (drafting agent hard constraints)
+  • load_book_outline()          — reads book_outline.md (planner's scene roadmap)
+  • load_case_studies()          — reads case_studies.md (empirical stories)
+  • load_audience_personas()     — reads audience_personas.md (Jordan & Sam profiles)
+  • load_stylistic_examples()    — reads stylistic_examples.md (DO/DO NOT voice cloned prose)
+  • load_front_and_back_matter() — reads front_and_back_matter.md (packaging specs)
+  • load_expansion_framework()   — reads expansion_framework.md (6-step sub-section blueprint)
 
-All three follow the same contract: fresh filesystem read on every call,
+Exposes master concatenator:
+  • load_all_context_documents() / load_full_context_string() — reads all 8 files
+    and concatenates them into one unified, comprehensive context string.
+
+All follow the same contract: fresh filesystem read on every call,
 graceful fallback on missing file, never returns None.
 """
 
@@ -26,24 +35,22 @@ logger = logging.getLogger(__name__)
 # Walk up three parents: utils/ → backend/ → repo_root/
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
-_STORY_BIBLE_PATH  = _REPO_ROOT / "story_bible.md"
-_SYSTEM_RULES_PATH = _REPO_ROOT / "system_rules.md"
-_BOOK_OUTLINE_PATH = _REPO_ROOT / "book_outline.md"
+_STORY_BIBLE_PATH            = _REPO_ROOT / "story_bible.md"
+_SYSTEM_RULES_PATH           = _REPO_ROOT / "system_rules.md"
+_BOOK_OUTLINE_PATH           = _REPO_ROOT / "book_outline.md"
+_CASE_STUDIES_PATH           = _REPO_ROOT / "case_studies.md"
+_AUDIENCE_PERSONAS_PATH      = _REPO_ROOT / "audience_personas.md"
+_STYLISTIC_EXAMPLES_PATH     = _REPO_ROOT / "stylistic_examples.md"
+_FRONT_AND_BACK_MATTER_PATH  = _REPO_ROOT / "front_and_back_matter.md"
+_EXPANSION_FRAMEWORK_PATH    = _REPO_ROOT / "expansion_framework.md"
 
 
 # ── Private helper ─────────────────────────────────────────────────────────────
 
 def _load_markdown_file(target: Path, label: str) -> str:
     """
-    Read *target* and return its text.  On failure, return a structured
+    Read *target* and return its text. On failure, return a structured
     warning string so callers never receive None.
-
-    Parameters
-    ----------
-    target : Path
-        Absolute path to the markdown file.
-    label : str
-        Human-readable name used in log messages and fallback text.
     """
     try:
         content = target.read_text(encoding="utf-8")
@@ -75,80 +82,113 @@ def _load_markdown_file(target: Path, label: str) -> str:
 # ── Public loaders ─────────────────────────────────────────────────────────────
 
 def load_story_bible(path: Path | str | None = None) -> str:
-    """
-    Read story_bible.md and return it as a plain string.
-
-    Fresh filesystem read on every call — edits to the file are picked up
-    on the next session creation without restarting the server.
-
-    Parameters
-    ----------
-    path : Path | str | None
-        Override the default path (useful for testing).
-    """
+    """Read story_bible.md and return it as a plain string."""
     target = Path(path) if path is not None else _STORY_BIBLE_PATH
     return _load_markdown_file(target, "Story Bible (story_bible.md)")
 
 
 def load_system_rules(path: Path | str | None = None) -> str:
-    """
-    Read system_rules.md and return it as a plain string.
-
-    system_rules.md contains the absolute drafting constraints for the
-    AI writing agent: tone, formatting, hallucination limits, forbidden
-    concepts.  It is injected into the execute_step system prompt so these
-    rules are the first thing the drafting LLM reads on every call.
-
-    Parameters
-    ----------
-    path : Path | str | None
-        Override the default path (useful for testing).
-
-    Examples
-    --------
-    >>> from backend.utils.utils import load_system_rules
-    >>> rules = load_system_rules()
-    >>> assert "# Tone and Voice" in rules
-    """
+    """Read system_rules.md and return it as a plain string."""
     target = Path(path) if path is not None else _SYSTEM_RULES_PATH
     return _load_markdown_file(target, "System Rules (system_rules.md)")
 
 
 def load_book_outline(path: Path | str | None = None) -> str:
-    """
-    Read book_outline.md and return it as a plain string.
-
-    book_outline.md is the scene-by-scene roadmap that the Planner agent
-    uses as its binding contract.  It is injected into the plan_step prompt
-    to constrain the generated chapter plan to the pre-approved structure.
-
-    Parameters
-    ----------
-    path : Path | str | None
-        Override the default path (useful for testing).
-
-    Examples
-    --------
-    >>> from backend.utils.utils import load_book_outline
-    >>> outline = load_book_outline()
-    >>> assert "Chapter 1" in outline
-    """
+    """Read book_outline.md and return it as a plain string."""
     target = Path(path) if path is not None else _BOOK_OUTLINE_PATH
     return _load_markdown_file(target, "Book Outline (book_outline.md)")
+
+
+def load_case_studies(path: Path | str | None = None) -> str:
+    """Read case_studies.md and return it as a plain string."""
+    target = Path(path) if path is not None else _CASE_STUDIES_PATH
+    return _load_markdown_file(target, "Case Studies (case_studies.md)")
+
+
+def load_audience_personas(path: Path | str | None = None) -> str:
+    """Read audience_personas.md and return it as a plain string."""
+    target = Path(path) if path is not None else _AUDIENCE_PERSONAS_PATH
+    return _load_markdown_file(target, "Audience Personas (audience_personas.md)")
+
+
+def load_stylistic_examples(path: Path | str | None = None) -> str:
+    """Read stylistic_examples.md and return it as a plain string."""
+    target = Path(path) if path is not None else _STYLISTIC_EXAMPLES_PATH
+    return _load_markdown_file(target, "Stylistic Examples (stylistic_examples.md)")
+
+
+def load_front_and_back_matter(path: Path | str | None = None) -> str:
+    """Read front_and_back_matter.md and return it as a plain string."""
+    target = Path(path) if path is not None else _FRONT_AND_BACK_MATTER_PATH
+    return _load_markdown_file(target, "Front & Back Matter (front_and_back_matter.md)")
+
+
+def load_expansion_framework(path: Path | str | None = None) -> str:
+    """Read expansion_framework.md and return it as a plain string."""
+    target = Path(path) if path is not None else _EXPANSION_FRAMEWORK_PATH
+    return _load_markdown_file(target, "Expansion Framework (expansion_framework.md)")
+
+
+def load_all_context_documents() -> dict[str, str]:
+    """
+    Read all system markdown files and return them as a dictionary of filename -> content.
+    """
+    return {
+        "story_bible.md": load_story_bible(),
+        "system_rules.md": load_system_rules(),
+        "book_outline.md": load_book_outline(),
+        "case_studies.md": load_case_studies(),
+        "audience_personas.md": load_audience_personas(),
+        "stylistic_examples.md": load_stylistic_examples(),
+        "front_and_back_matter.md": load_front_and_back_matter(),
+        "expansion_framework.md": load_expansion_framework(),
+    }
+
+
+def load_full_context_string() -> str:
+    """
+    Read all 8 system markdown files and concatenate them into one massive,
+    highly detailed context string with section dividers.
+    """
+    docs = load_all_context_documents()
+    parts = []
+    for filename, content in docs.items():
+        divider = f"\n\n{'═' * 80}\n=== DOCUMENT: {filename} ===\n{'═' * 80}\n\n"
+        parts.append(divider + content.strip())
+
+    return "".join(parts)
 
 
 # ── Path helpers ───────────────────────────────────────────────────────────────
 
 def story_bible_path() -> Path:
-    """Return the resolved path to story_bible.md (useful for CLI/debugging)."""
     return _STORY_BIBLE_PATH
 
 
 def system_rules_path() -> Path:
-    """Return the resolved path to system_rules.md (useful for CLI/debugging)."""
     return _SYSTEM_RULES_PATH
 
 
 def book_outline_path() -> Path:
-    """Return the resolved path to book_outline.md (useful for CLI/debugging)."""
     return _BOOK_OUTLINE_PATH
+
+
+def case_studies_path() -> Path:
+    return _CASE_STUDIES_PATH
+
+
+def audience_personas_path() -> Path:
+    return _AUDIENCE_PERSONAS_PATH
+
+
+def stylistic_examples_path() -> Path:
+    return _STYLISTIC_EXAMPLES_PATH
+
+
+def front_and_back_matter_path() -> Path:
+    return _FRONT_AND_BACK_MATTER_PATH
+
+
+def expansion_framework_path() -> Path:
+    return _EXPANSION_FRAMEWORK_PATH
+

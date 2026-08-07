@@ -58,7 +58,14 @@ from tenacity import (
 from backend.core.config import settings
 from backend.core.state import BookWriterState
 from backend.utils.prompt_builder import build_context_anchor_block
-from backend.utils.utils import load_book_outline, load_system_rules
+from backend.utils.utils import (
+    load_audience_personas,
+    load_book_outline,
+    load_case_studies,
+    load_expansion_framework,
+    load_stylistic_examples,
+    load_system_rules,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -157,18 +164,24 @@ Produce the JSON plan now.
 _EXECUTE_SYSTEM = """\
 {system_rules}
 
+{expansion_framework}
+
+{audience_personas}
+
+{stylistic_examples}
+
+{case_studies}
+
 ━━━ ADDITIONAL CRAFT RULES ━━━
-You are a professional novelist writing in {pov} POV, {tense} tense.
+You are a professional author writing in {pov} POV, {tense} tense.
 Tone: {tone}
 
-1. Write in continuous, flowing prose — no headers, no bullet points, no
-   meta-commentary.  Output ONLY the chapter text.
-2. Maintain strict continuity with the PAST STEPS summaries.  Do not
-   contradict any established fact.
+1. Write in continuous, flowing prose — no meta-commentary, no JSON.
+2. Maintain strict continuity with the PAST STEPS summaries. Do not contradict any established fact.
 3. Follow the writing_directive in the CURRENT TASK exactly.
-4. Cover ALL key_events listed in the CURRENT TASK.  Do not skip any.
-5. Reach the target_word_count (±10%).  Do not stop early.
-6. End the chapter at a natural closing beat that fulfils the continuity_hooks.
+4. Cover ALL key_events listed in the CURRENT TASK. Do not skip any.
+5. Reach the target_word_count (±10%). Do not stop early.
+6. End the chapter with the required Actionable Takeaway section as specified in system_rules.md.
 """
 
 _EXECUTE_HUMAN = """\
@@ -428,9 +441,12 @@ async def execute_step(state: BookWriterState) -> dict:
     # ── Build prompt blocks ───────────────────────────────────────────────────
     anchor_block = build_context_anchor_block(anchor)
 
-    # Load system_rules.md fresh on every call — ensures the drafting agent
-    # always receives the most current absolute constraints.
+    # Load all drafting guidance files fresh on every call
     system_rules_text = load_system_rules()
+    expansion_framework_text = load_expansion_framework()
+    audience_personas_text = load_audience_personas()
+    stylistic_examples_text = load_stylistic_examples()
+    case_studies_text = load_case_studies()
 
     if past_steps:
         past_steps_block = "\n\n".join(
@@ -450,10 +466,14 @@ async def execute_step(state: BookWriterState) -> dict:
         for hook in task.get("continuity_hooks", [])
     ) or "  (none specified)"
 
-    # ── System prompt (system_rules.md + craft rules) ─────────────────────────
+    # ── System prompt (guidance docs + craft rules) ───────────────────────────
     style = anchor.style_guide
     system_content = _EXECUTE_SYSTEM.format(
         system_rules=system_rules_text,
+        expansion_framework=expansion_framework_text,
+        audience_personas=audience_personas_text,
+        stylistic_examples=stylistic_examples_text,
+        case_studies=case_studies_text,
         pov=style.pov,
         tense=style.tense,
         tone=style.tone or "professional, warm, and precise",
