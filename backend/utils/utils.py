@@ -32,15 +32,15 @@ logger = logging.getLogger(__name__)
 # Markdown files live at: <repo_root>/*.md
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
-_STORY_BIBLE_PATH            = _REPO_ROOT / "story_bible.md"
-_RESEARCH_DATABASE_PATH      = _REPO_ROOT / "research_database.md"
-_SYSTEM_RULES_PATH           = _REPO_ROOT / "system_rules.md"
-_BOOK_OUTLINE_PATH           = _REPO_ROOT / "book_outline.md"
-_CASE_STUDIES_PATH           = _REPO_ROOT / "case_studies.md"
-_AUDIENCE_PERSONAS_PATH      = _REPO_ROOT / "audience_personas.md"
-_STYLISTIC_EXAMPLES_PATH     = _REPO_ROOT / "stylistic_examples.md"
-_FRONT_AND_BACK_MATTER_PATH  = _REPO_ROOT / "front_and_back_matter.md"
-_EXPANSION_FRAMEWORK_PATH    = _REPO_ROOT / "expansion_framework.md"
+_STORY_BIBLE_PATH            = _REPO_ROOT / "docs" / "story_bible.md"
+_RESEARCH_DATABASE_PATH      = _REPO_ROOT / "docs" / "research_database.md"
+_SYSTEM_RULES_PATH           = _REPO_ROOT / "docs" / "system_rules.md"
+_BOOK_OUTLINE_PATH           = _REPO_ROOT / "docs" / "book_outline.md"
+_CASE_STUDIES_PATH           = _REPO_ROOT / "docs" / "case_studies.md"
+_AUDIENCE_PERSONAS_PATH      = _REPO_ROOT / "docs" / "audience_personas.md"
+_STYLISTIC_EXAMPLES_PATH     = _REPO_ROOT / "docs" / "stylistic_examples.md"
+_FRONT_AND_BACK_MATTER_PATH  = _REPO_ROOT / "docs" / "front_and_back_matter.md"
+_EXPANSION_FRAMEWORK_PATH    = _REPO_ROOT / "docs" / "expansion_framework.md"
 
 
 # ── Private helper ─────────────────────────────────────────────────────────────

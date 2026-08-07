@@ -22,6 +22,10 @@ from backend.graph.nodes import (
     execute_step,
     plan_step,
     replan_step,
+    research_step,
+    front_matter_step,
+    back_matter_step,
+    compile_book_step,
     should_continue,
 )
 
@@ -40,18 +44,30 @@ def build_plan_execute_graph() -> CompiledGraph:
 
     # ── Register core Plan-and-Execute nodes ──────────────────────────────────
     g.add_node("plan_step", plan_step)
+    g.add_node("research_step", research_step)
     g.add_node("execute_step", execute_step)
     g.add_node("replan_step", replan_step)
+    
+    # ── Register Compilation nodes ──────────────────────────────────────────────
+    g.add_node("front_matter_step", front_matter_step)
+    g.add_node("back_matter_step", back_matter_step)
+    g.add_node("compile_book_step", compile_book_step)
 
     # ── Edges ─────────────────────────────────────────────────────────────────
     g.add_edge(START, "plan_step")
-    g.add_edge("plan_step", "execute_step")
+    g.add_edge("plan_step", "research_step")
+    g.add_edge("research_step", "execute_step")
     g.add_edge("execute_step", "replan_step")
     g.add_conditional_edges(
         "replan_step",
         should_continue,
-        {"execute": "execute_step", "end": END},
+        {"execute": "research_step", "front_matter": "front_matter_step"},
     )
+    
+    # Linear compilation flow
+    g.add_edge("front_matter_step", "back_matter_step")
+    g.add_edge("back_matter_step", "compile_book_step")
+    g.add_edge("compile_book_step", END)
 
     # ── Checkpointer setup (Redis with MemorySaver fallback) ─────────────────
     try:
@@ -63,9 +79,9 @@ def build_plan_execute_graph() -> CompiledGraph:
 
     compiled = g.compile(
         checkpointer=checkpointer,
-        interrupt_before=["execute_step"],
+        interrupt_before=["research_step"],
     )
-    logger.info("Plan-and-Execute graph compiled with interrupt_before=['execute_step']")
+    logger.info("Plan-and-Execute graph compiled with interrupt_before=['research_step']")
     return compiled
 
 

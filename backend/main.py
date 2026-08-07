@@ -17,8 +17,9 @@ from typing import Any, AsyncGenerator
 import structlog
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, FileResponse
 from pydantic import BaseModel, Field
+import os
 
 from backend.core.config import settings
 from backend.core.memory import MemoryManager
@@ -103,15 +104,23 @@ async def run_graph_and_stream(
             data = event.get("data", {})
 
             # Node start transition
-            if kind == "on_chain_start" and name in ("plan_step", "execute_step", "replan_step"):
+            if kind == "on_chain_start" and name in ("plan_step", "research_step", "execute_step", "replan_step", "front_matter_step", "back_matter_step", "compile_book_step"):
                 current_node = name
                 msg = ""
                 if name == "plan_step":
                     msg = "Planner AI is generating granular sub-section tasks..."
+                elif name == "research_step":
+                    msg = f"Researching facts for: {active_sub_section}..."
                 elif name == "execute_step":
                     msg = f"Drafting sub-section prose: {active_sub_section}..."
                 elif name == "replan_step":
                     msg = "Summarising completed sub-section and compressing memory..."
+                elif name == "front_matter_step":
+                    msg = "Synthesizing Front Matter (Title Page, TOC, Introduction)..."
+                elif name == "back_matter_step":
+                    msg = "Synthesizing Back Matter (Conclusion, Acknowledgments, Glossary)..."
+                elif name == "compile_book_step":
+                    msg = "Compiling final book to Markdown format..."
 
                 yield f"data: {json.dumps({'type': 'status', 'status': name, 'message': msg, 'current_node': name, 'session_id': session_id})}\n\n"
 
@@ -244,6 +253,27 @@ async def start_writing_get(
     """GET /api/write — Convenience GET endpoint for SSE streams."""
     payload = StartWritingRequest(title=title, genre=genre, premise=premise)
     return await start_writing(payload)
+
+
+@app.get("/api/download/{session_id}")
+async def download_manuscript(session_id: str):
+    """GET /api/download/{session_id} — Serves the compiled Markdown file for download."""
+    async with MemoryManager() as mem:
+        state = await mem.load_state(session_id)
+    if not state:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    anchor = state.get("context_anchor", {})
+    title = anchor.get("title", "Untitled_Book") if isinstance(anchor, dict) else (getattr(anchor, "title", "Untitled_Book") if getattr(anchor, "title", None) else "Untitled_Book")
+    safe_title = "".join([c if c.isalnum() else "_" for c in title]).strip("_")
+    
+    output_dir = os.path.join(settings.base_dir, "output") if hasattr(settings, "base_dir") else os.path.join(os.getcwd(), "output")
+    file_path = os.path.join(output_dir, f"{safe_title}_Final.md")
+    
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Manuscript file not found. Ensure the book has finished compiling.")
+        
+    return FileResponse(file_path, filename=f"{safe_title}_Final.md", media_type="text/markdown")
 
 
 @app.on_event("startup")

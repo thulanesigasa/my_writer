@@ -20,6 +20,7 @@ import {
   Check,
   ArrowRight,
   Eye,
+  Download,
 } from "lucide-react";
 
 type PipelineStatus =
@@ -28,6 +29,7 @@ type PipelineStatus =
   | "waiting_for_approval"
   | "drafting"
   | "summarizing"
+  | "compiling"
   | "completed";
 
 interface SubSectionTask {
@@ -125,6 +127,7 @@ export default function HomePage() {
                 if (data.current_node === "plan_step") setPipelineStatus("planning");
                 else if (data.current_node === "execute_step") setPipelineStatus("drafting");
                 else if (data.current_node === "replan_step") setPipelineStatus("summarizing");
+                else if (["front_matter_step", "back_matter_step", "compile_book_step"].includes(data.current_node)) setPipelineStatus("compiling");
               }
             }
 
@@ -351,6 +354,16 @@ export default function HomePage() {
           >
             <Sliders className="h-3.5 w-3.5 text-cyan-400" /> Config
           </button>
+          
+          {pipelineStatus === "completed" && sessionId && (
+            <a
+              href={`http://localhost:8000/api/download/${sessionId}`}
+              download
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/25"
+            >
+              <Download className="h-4 w-4" /> Download Manuscript
+            </a>
+          )}
 
           {pipelineStatus === "idle" || pipelineStatus === "completed" ? (
             <button
@@ -450,7 +463,7 @@ export default function HomePage() {
               <div className="flex items-center gap-2 text-xs font-medium text-slate-300">
                 {pipelineStatus === "waiting_for_approval" ? (
                   <Eye className="h-4 w-4 text-amber-400 animate-pulse" />
-                ) : pipelineStatus === "drafting" || pipelineStatus === "planning" ? (
+                ) : pipelineStatus === "drafting" || pipelineStatus === "planning" || pipelineStatus === "compiling" || pipelineStatus === "summarizing" ? (
                   <CircleDashed className="h-4 w-4 text-cyan-400 animate-spin" />
                 ) : (
                   <CheckCircle2 className="h-4 w-4 text-emerald-400" />
@@ -631,9 +644,28 @@ export default function HomePage() {
             )}
 
             {pipelineStatus === "summarizing" && (
-              <div className="py-4 px-5 rounded-xl bg-slate-950/80 border border-cyan-500/30 flex items-center gap-3 text-xs text-cyan-300 font-mono">
+              <div className="py-4 px-5 rounded-xl bg-slate-950/80 border border-cyan-500/30 flex items-center gap-3 text-xs text-cyan-300 font-mono mt-4">
                 <Brain className="h-4 w-4 text-cyan-400 animate-pulse" />
                 <span>Compressing completed sub-section memory...</span>
+              </div>
+            )}
+            
+            {pipelineStatus === "compiling" && (
+              <div className="py-4 px-5 rounded-xl bg-slate-950/80 border border-emerald-500/30 flex items-center gap-3 text-xs text-emerald-300 font-mono mt-4">
+                <BookOpen className="h-4 w-4 text-emerald-400 animate-pulse" />
+                <span>{statusMessage}</span>
+              </div>
+            )}
+
+            {pipelineStatus === "completed" && (
+              <div className="py-4 px-5 rounded-xl bg-emerald-950/80 border border-emerald-500/50 flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-emerald-300 font-mono mt-4">
+                <div className="flex items-center gap-3">
+                    <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+                    <span>Book Generation Complete! Your final Markdown file is ready.</span>
+                </div>
+                <a href={`http://localhost:8000/api/download/${sessionId}`} download className="px-4 py-2 bg-emerald-500 text-slate-950 font-bold rounded-lg flex items-center gap-2 shadow-lg hover:bg-emerald-400 transition">
+                    <Download className="h-3.5 w-3.5" /> Download
+                </a>
               </div>
             )}
 

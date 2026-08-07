@@ -48,6 +48,7 @@ from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
+from langchain_tavily import TavilySearch
 from tenacity import (
     retry,
     retry_if_exception_type,
@@ -63,6 +64,7 @@ from backend.utils.utils import (
     load_book_outline,
     load_case_studies,
     load_expansion_framework,
+    load_front_and_back_matter,
     load_stylistic_examples,
     load_system_rules,
 )
@@ -175,6 +177,8 @@ _EXECUTE_SYSTEM = """\
 {stylistic_examples}
 
 {case_studies}
+
+{research_notes_block}
 
 ━━━ SUB-SECTION DRAFTING INSTRUCTIONS ━━━
 You are a professional author drafting ONLY THE SINGLE SUB-SECTION specified in the CURRENT TASK.
@@ -483,6 +487,7 @@ async def execute_step(state: BookWriterState) -> dict:
         audience_personas=audience_personas_text,
         stylistic_examples=stylistic_examples_text,
         case_studies=case_studies_text,
+        research_notes_block=f"━━━ RESEARCH NOTES ━━━\n{state.get('current_research_notes', 'No specific notes.')}" if state.get("current_research_notes") else "",
         pov=style.pov,
         tense=style.tense,
         tone=style.tone or "professional, warm, and precise",
@@ -514,6 +519,49 @@ async def execute_step(state: BookWriterState) -> dict:
 
     return {
         "current_draft": raw_prose,
+        "updated_at": datetime.utcnow().isoformat(),
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Node 2.5 — research_step
+# ─────────────────────────────────────────────────────────────────────────────
+
+async def research_step(state: BookWriterState) -> dict:
+    """
+    LangGraph node — Research: dynamically search the web to enrich writing.
+    """
+    plan: list[dict] = state.get("plan", [])
+    if not plan:
+        return {"current_research_notes": "", "updated_at": datetime.utcnow().isoformat()}
+
+    task = plan[0]
+    title = task.get("title", "Unknown Sub-Section")
+    one_sentence_summary = task.get("one_sentence_summary", "")
+    key_events = "\n".join(task.get("key_events", []))
+
+    query_prompt = f"Generate a single search query to research factual details for a book chapter.\nTitle: {title}\nSummary: {one_sentence_summary}\nKey Events:\n{key_events}\n\nReturn ONLY the search query string without any quotes or preamble."
+    
+    query = await _call_orchestration([HumanMessage(content=query_prompt)])
+    query = query.strip().strip('"').strip("'")
+    
+    logger.info("research_step | Executing search query: %r", query)
+    
+    tavily = TavilySearch(max_results=3, search_depth="advanced")
+    try:
+        search_results = await tavily.ainvoke({"query": query})
+    except Exception as e:
+        logger.error("Tavily search failed: %s", e)
+        search_results = f"Search failed: {e}"
+
+    summary_prompt = f"Search query used: {query}\n\nResults:\n{search_results}\n\nExtract 3-5 factual pieces of information relevant to the sub-section '{title}'. Return ONLY the facts as a plain string, formatted as bullet points. Do not include introductory text."
+    
+    notes = await _call_orchestration([HumanMessage(content=summary_prompt)])
+    
+    logger.info("research_step | Generated research notes for %r", title)
+    
+    return {
+        "current_research_notes": notes,
         "updated_at": datetime.utcnow().isoformat(),
     }
 
@@ -558,6 +606,7 @@ async def replan_step(state: BookWriterState) -> dict:
             "plan": [],
             "past_steps": past_steps,
             "current_draft": "",
+            "current_research_notes": "",
             "updated_at": datetime.utcnow().isoformat(),
         }
 
@@ -573,6 +622,8 @@ async def replan_step(state: BookWriterState) -> dict:
     )
 
     # ── Guard: empty draft (e.g., crash recovery) ─────────────────────────────
+    full_manuscript = state.get("full_manuscript", "")
+
     if not current_draft.strip():
         logger.warning(
             "replan_step | chapter=%d | current_draft is empty; using placeholder",
@@ -586,6 +637,8 @@ async def replan_step(state: BookWriterState) -> dict:
             "past_steps": past_steps + [new_summary],
             "plan": plan[1:],
             "current_draft": "",
+            "current_research_notes": "",
+            "full_manuscript": full_manuscript,
             "updated_at": datetime.utcnow().isoformat(),
         }
 
@@ -618,6 +671,10 @@ async def replan_step(state: BookWriterState) -> dict:
         len(plan) - 1,
     )
 
+    new_manuscript = full_manuscript
+    if current_draft.strip():
+        new_manuscript = new_manuscript + ("\n\n" if new_manuscript else "") + current_draft.strip()
+
     return {
         # Append compressed summary to short-term memory
         "past_steps": past_steps + [new_summary],
@@ -625,6 +682,8 @@ async def replan_step(state: BookWriterState) -> dict:
         "plan": plan[1:],
         # Wipe raw prose — context window freed for the next chapter
         "current_draft": "",
+        "current_research_notes": "",
+        "full_manuscript": new_manuscript,
         "updated_at": datetime.utcnow().isoformat(),
     }
 
@@ -638,14 +697,144 @@ def should_continue(state: BookWriterState) -> str:
     Conditional edge function for the Plan-and-Execute loop.
 
     Returns "execute" when there are still chapters in the plan queue,
-    or "end" when the queue is exhausted.
+    or "front_matter" when the queue is exhausted.
 
     Usage in graph.py::
 
-        graph.add_conditional_edges(
-            "replan",
+        g.add_conditional_edges(
+            "replan_step",
             should_continue,
-            {"execute": "execute_step", "end": END},
+            {"execute": "research_step", "front_matter": "front_matter_step"},
         )
     """
-    return "execute" if state["plan"] else "end"
+    return "execute" if state.get("plan") else "front_matter"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Node 4 — front_matter_step
+# ─────────────────────────────────────────────────────────────────────────────
+
+async def front_matter_step(state: BookWriterState) -> dict:
+    """
+    LangGraph node — Generates Title Page, Copyright, TOC, and Introduction.
+    """
+    anchor = state["context_anchor"]
+    full_manuscript = state.get("full_manuscript", "")
+    
+    logger.info("front_matter_step | Generating front matter for %r", anchor.title)
+    
+    front_back_context = load_front_and_back_matter()
+    
+    system_prompt = f"""You are a professional book compiler.
+Read the Front and Back Matter context and generate the Front Matter for the book.
+This must include:
+1. Title Page (with title and subtitle)
+2. Copyright Page
+3. Table of Contents
+4. Introduction
+
+Use the provided manuscript to inform your generation.
+Return ONLY the formatted Markdown text for the Front Matter. Do not include any JSON wrappers or conversational filler.
+    
+Context:
+{front_back_context}
+"""
+
+    human_prompt = f"""Book Title: {anchor.title}
+Premise: {anchor.premise}
+
+Here is the full manuscript text so far:
+{full_manuscript[:3000]}... (truncated for context window)
+
+Generate the Front Matter now.
+"""
+    
+    front_matter = await _call_drafting([SystemMessage(content=system_prompt), HumanMessage(content=human_prompt)])
+    
+    new_manuscript = front_matter.strip() + "\n\n" + full_manuscript.strip()
+    
+    return {
+        "full_manuscript": new_manuscript,
+        "updated_at": datetime.utcnow().isoformat(),
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Node 5 — back_matter_step
+# ─────────────────────────────────────────────────────────────────────────────
+
+async def back_matter_step(state: BookWriterState) -> dict:
+    """
+    LangGraph node — Generates Conclusion, Acknowledgments, and Glossary.
+    """
+    anchor = state["context_anchor"]
+    full_manuscript = state.get("full_manuscript", "")
+    
+    logger.info("back_matter_step | Generating back matter for %r", anchor.title)
+    
+    front_back_context = load_front_and_back_matter()
+    
+    system_prompt = f"""You are a professional book compiler.
+Read the Front and Back Matter context and generate the Back Matter for the book.
+This must include:
+1. Conclusion
+2. Acknowledgments
+3. Glossary of Key Terms
+
+Use the provided manuscript to inform your generation.
+Return ONLY the formatted Markdown text for the Back Matter. Do not include any JSON wrappers or conversational filler.
+    
+Context:
+{front_back_context}
+"""
+
+    human_prompt = f"""Book Title: {anchor.title}
+Premise: {anchor.premise}
+
+Here is the final part of the manuscript text for context:
+...{full_manuscript[-3000:]}
+
+Generate the Back Matter now.
+"""
+    
+    back_matter = await _call_drafting([SystemMessage(content=system_prompt), HumanMessage(content=human_prompt)])
+    
+    new_manuscript = full_manuscript.strip() + "\n\n" + back_matter.strip()
+    
+    return {
+        "full_manuscript": new_manuscript,
+        "updated_at": datetime.utcnow().isoformat(),
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Node 6 — compile_book_step
+# ─────────────────────────────────────────────────────────────────────────────
+
+import os
+
+async def compile_book_step(state: BookWriterState) -> dict:
+    """
+    LangGraph node — Compiles the final manuscript and writes it to disk.
+    """
+    anchor = state["context_anchor"]
+    full_manuscript = state.get("full_manuscript", "")
+    
+    logger.info("compile_book_step | Compiling book to local disk")
+    
+    title = anchor.title if anchor.title else "Untitled_Book"
+    safe_title = "".join([c if c.isalnum() else "_" for c in title]).strip("_")
+    
+    output_dir = os.path.join(settings.base_dir, "output") if hasattr(settings, "base_dir") else os.path.join(os.getcwd(), "output")
+    os.makedirs(output_dir, exist_ok=True)
+    
+    file_path = os.path.join(output_dir, f"{safe_title}_Final.md")
+    
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write(full_manuscript)
+        
+    logger.info(f"compile_book_step | Successfully compiled to {file_path}")
+    
+    return {
+        "updated_at": datetime.utcnow().isoformat(),
+    }

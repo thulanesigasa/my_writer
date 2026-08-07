@@ -323,6 +323,8 @@ class BookWriterState(TypedDict):
     plan: list[dict]
     past_steps: list[str]
     current_draft: str
+    current_research_notes: str
+    full_manuscript: str
 
     # ── LangChain message history (append-only via add_messages reducer) ─────
     messages: Annotated[list, add_messages]
@@ -399,6 +401,8 @@ def initial_state(
         plan=[],
         past_steps=[],
         current_draft="",
+        current_research_notes="",
+        full_manuscript="",
         messages=[],
         run_id=str(uuid.uuid4()),
         session_id=sid,
@@ -443,6 +447,8 @@ def state_from_json(data: dict) -> BookWriterState:
         plan=data.get("plan", []),
         past_steps=data.get("past_steps", []),
         current_draft=data.get("current_draft", ""),
+        current_research_notes=data.get("current_research_notes", ""),
+        full_manuscript=data.get("full_manuscript", ""),
         messages=data.get("messages", []),
         run_id=data["run_id"],
         session_id=data["session_id"],
