@@ -106,7 +106,20 @@ class ContextAnchor(BaseModel):
     (or in summarised form for tight context budgets) into every agent call.
 
     It is NEVER pruned — only extended as the book progresses.
+
+    story_bible_raw
+    ───────────────
+    The unmodified text of story_bible.md, read from disk at session creation
+    time by load_story_bible() in backend/utils/utils.py.  It is stored here
+    so that every agent node can access the human-authored ground-truth rules
+    directly from state, without an additional filesystem read.
     """
+    # ── Human-authored ground truth (loaded from story_bible.md) ─────────────
+    story_bible_raw: str = Field(
+        default="",
+        description="Raw text of story_bible.md, injected at session creation.",
+    )
+
     # Book identity
     book_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     title: str = ""
@@ -303,19 +316,30 @@ def initial_state(
     premise: str = "",
     total_chapters: int = 10,
     session_id: str | None = None,
+    story_bible_raw: str = "",
 ) -> BookWriterState:
     """
     Factory that produces a clean initial BookWriterState for a new book run.
 
+    Parameters
+    ----------
+    story_bible_raw : str
+        The full text of story_bible.md, obtained by calling
+        ``backend.utils.utils.load_story_bible()`` before invoking the graph.
+        Stored inside ContextAnchor so every agent node can access it from
+        state without an additional filesystem read.
+
     Usage::
 
         from backend.core.state import initial_state
+        from backend.utils.utils import load_story_bible
 
         state = initial_state(
             book_title="The Silent Meridian",
             genre="sci-fi thriller",
             premise="A deep-space cartographer discovers the galaxy's edge is a lie.",
             total_chapters=12,
+            story_bible_raw=load_story_bible(),
         )
         graph.invoke(state)
     """
@@ -323,6 +347,7 @@ def initial_state(
     sid = session_id or str(uuid.uuid4())
 
     anchor = ContextAnchor(
+        story_bible_raw=story_bible_raw,
         title=book_title,
         genre=genre,
         premise=premise,

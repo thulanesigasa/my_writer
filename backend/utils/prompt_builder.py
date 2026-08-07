@@ -16,6 +16,10 @@ def build_context_anchor_block(anchor: ContextAnchor) -> str:
     """
     Serialise the ContextAnchor into a compact, LLM-readable block.
     This is injected at the top of every agent prompt.
+
+    Structure (top-to-bottom, matching LLM attention priority):
+      1. STORY BIBLE  — raw human-authored rules from story_bible.md (never pruned)
+      2. STRUCTURED ANCHOR — derived facts (title, genre, characters, world, threads)
     """
     chars = "\n".join(
         f"  • {c.name} ({c.role}): {c.backstory or c.physical_description or 'see profile'}"
@@ -32,7 +36,20 @@ def build_context_anchor_block(anchor: ContextAnchor) -> str:
     style = anchor.style_guide
     forbidden = ", ".join(style.forbidden_words) if style.forbidden_words else "none"
 
-    return f"""\
+    # ── 1. Story Bible block (human-authored hard constraints) ────────────────
+    if anchor.story_bible_raw.strip():
+        bible_block = (
+            "╔" + "═" * 50 + "╗\n"
+            "║  STORY BIBLE (HARD CONSTRAINTS — READ FIRST)      ║\n"
+            "╚" + "═" * 50 + "╝\n"
+            + anchor.story_bible_raw.strip()
+            + "\n\n"
+        )
+    else:
+        bible_block = ""  # no story bible loaded; skip silently
+
+    # ── 2. Structured anchor block (AI-generated derived facts) ───────────────
+    structured_block = f"""\
 ╔══════════════════════════════════════════╗
 ║         CONTEXT ANCHOR (STORY BIBLE)     ║
 ╚══════════════════════════════════════════╝
@@ -57,6 +74,8 @@ WORLDBUILDING
 UNRESOLVED NARRATIVE THREADS
 {unresolved}
 """
+
+    return bible_block + structured_block
 
 
 def build_chapter_prompt(

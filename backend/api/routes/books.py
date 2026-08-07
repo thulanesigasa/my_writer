@@ -19,6 +19,7 @@ from pydantic import BaseModel
 from backend.core.state import initial_state
 from backend.core.memory import MemoryManager
 from backend.graph.graph import graph
+from backend.utils.utils import load_story_bible
 
 router = APIRouter()
 
@@ -47,12 +48,18 @@ async def create_book(payload: CreateBookRequest) -> Any:
     the chapter outline.  Returns the session ID for subsequent SSE streaming.
     """
     session_id = str(uuid.uuid4())
+
+    # ── Load story bible fresh from disk on every session ────────────────────
+    # This ensures any edits to story_bible.md are picked up without a restart.
+    story_bible = load_story_bible()
+
     state = initial_state(
         book_title=payload.title,
         genre=payload.genre,
         premise=payload.premise,
         total_chapters=payload.total_chapters,
         session_id=session_id,
+        story_bible_raw=story_bible,       # ← injected into ContextAnchor
     )
     state["context_anchor"].target_audience = payload.target_audience
 
