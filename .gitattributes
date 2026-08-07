@@ -1,0 +1,9 @@
+# Normalize all text files to LF in the repo; checkout as-is on Windows
+* text=auto eol=lf
+
+# Force binary files
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff2 binary
+*.lock text eol=lf
