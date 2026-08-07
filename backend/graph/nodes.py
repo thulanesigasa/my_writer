@@ -101,40 +101,46 @@ drafting_llm = ChatOpenAI(
 _PLAN_SYSTEM = """\
 You are a master literary architect and outlining agent.
 
-Your sole responsibility is to read the provided Story Bible and produce a
-complete, ordered chapter plan for the book in valid JSON — nothing else.
+Your sole responsibility is to read the provided Book Outline and produce a
+granular, sub-section level execution plan in valid JSON — nothing else.
+
+⚠️  UNIT OF WORK RULE: Do NOT output a plan of just top-level chapters (e.g. 5 items).
+Instead, parse book_outline.md and break EVERY chapter down into its specific sub-sections
+(e.g., "Chapter 1.1: Defining Instinct vs. Reflex vs. Intuition",
+"Chapter 1.2: The Historical Psychological Context",
+"Chapter 1.3: Henri Bergson's Philosophy of Conscious Intuition").
 
 ━━━ OUTPUT FORMAT ━━━
 Return ONLY a JSON object with a single key "plan" whose value is an ordered
-array of chapter objects.  Each chapter object must have these exact keys:
+array of sub-section objects. Each sub-section object must have these exact keys:
 
 {
   "plan": [
     {
+      "sub_section_id": "Chapter 1.1",
       "chapter_number": 1,
-      "title": "Short evocative chapter title",
-      "target_word_count": 1500,
-      "one_sentence_summary": "What this chapter proves or reveals",
+      "sub_section_number": 1,
+      "title": "Chapter 1.1: Defining Instinct vs. Reflex vs. Intuition",
+      "target_word_count": 750,
+      "one_sentence_summary": "Taxonomic breakdown distinguishing hardwired reflexes from biological instincts and rapid pattern-recognition intuition.",
       "key_events": [
-        "Event or beat 1",
-        "Event or beat 2",
-        "Event or beat 3"
+        "Opening scene / scenario introduction",
+        "Defining reflex: hardwired subcortical circuit",
+        "Defining instinct: species-level behavioural predisposition",
+        "Defining intuition: rapid compressed pattern recognition",
+        "Spectrum framework summary"
       ],
-      "writing_directive": "Specific instruction to the drafting agent about \
-tone, pacing, or structural requirement for this chapter",
-      "continuity_hooks": [
-        "A fact or thread that MUST carry into the next chapter"
-      ]
+      "writing_directive": "Execute the 6-step expansion sequence (Hook, Hard Science, Analogy, Case Study, Counter-Argument, Practical Application) for Chapter 1.1.",
+      "continuity_hooks": ["Set up historical psychology context in Chapter 1.2"]
     }
   ]
 }
 
 ━━━ CONSTRAINTS ━━━
-1. The number of chapters must match total_chapters in the Story Bible exactly.
-2. key_events must contain 3–5 items per chapter.
-3. writing_directive must be specific and actionable (≥ 20 words).
-4. Do NOT invent characters or terms not present in the Story Bible.
-5. Output ONLY the JSON object — no prose, no markdown fences, no explanation.
+1. Every sub-section in book_outline.md must have its own entry in the plan list.
+2. key_events must contain 3–5 specific beats for that sub-section.
+3. target_word_count per sub-section MUST be between 600 and 800 words.
+4. Output ONLY the JSON object — no prose, no markdown fences, no explanation.
 """
 
 _PLAN_HUMAN = """\
@@ -144,7 +150,7 @@ _PLAN_HUMAN = """\
 
 ━━━ TASK ━━━
 Using the Story Bible and Book Outline above as your binding contracts,
-generate the complete chapter plan for a book with the following parameters:
+generate the complete SUB-SECTION execution plan for a book with the following parameters:
 
   Title            : {title}
   Genre            : {genre}
@@ -152,10 +158,8 @@ generate the complete chapter plan for a book with the following parameters:
   Total chapters   : {total_chapters}
   Premise          : {premise}
 
-⚠️  CRITICAL: The plan you output must follow the chapter structure, sub-section
-order, opening scenes, beats, and word targets defined in the BOOK OUTLINE above.
-Do NOT invent a different structure. Do NOT merge or reorder chapters.
-Do NOT add chapters beyond total_chapters.
+⚠️  CRITICAL: You MUST output sub-sections (e.g., Chapter 1.1, Chapter 1.2, Chapter 1.3, Chapter 2.1...), NOT just top-level chapters!
+Every sub-section from book_outline.md must appear as a discrete task in the JSON plan list.
 
 Produce the JSON plan now.
 """
@@ -172,27 +176,32 @@ _EXECUTE_SYSTEM = """\
 
 {case_studies}
 
-━━━ ADDITIONAL CRAFT RULES ━━━
-You are a professional author writing in {pov} POV, {tense} tense.
-Tone: {tone}
+━━━ SUB-SECTION DRAFTING INSTRUCTIONS ━━━
+You are a professional author drafting ONLY THE SINGLE SUB-SECTION specified in the CURRENT TASK.
+Tone: {tone} | POV: {pov} | Tense: {tense}
 
-1. Write in continuous, flowing prose — no meta-commentary, no JSON.
-2. Maintain strict continuity with the PAST STEPS summaries. Do not contradict any established fact.
-3. Follow the writing_directive in the CURRENT TASK exactly.
-4. Cover ALL key_events listed in the CURRENT TASK. Do not skip any.
-5. Reach the target_word_count (±10%). Do not stop early.
-6. End the chapter with the required Actionable Takeaway section as specified in system_rules.md.
+1. WORD COUNT TARGET: You MUST write between 600 and 800 words for this sub-section. Do not write a brief summary.
+2. MANDATORY 6-STEP EXPANSION SEQUENCE: You must structure your sub-section prose using the exact sequence from expansion_framework.md:
+   • Step 1: The Hook & Context (relatable scenario or historical anecdote)
+   • Step 2: The Hard Science (neurobiology, pathways, mechanisms from research_database.md)
+   • Step 3: The Analogy (concrete, non-clichéd metaphor)
+   • Step 4: The Case Study (empirical proof from case_studies.md)
+   • Step 5: The Counter-Argument / Misconception (debunking popular myths like the Lizard Brain)
+   • Step 6: The Practical Application (actionable value for Jordan and Sam)
+3. Maintain strict continuity with the PAST STEPS summaries. Do not contradict established facts.
+4. Follow the writing_directive in the CURRENT TASK exactly. Cover ALL key_events listed.
+5. Output ONLY the prose for this sub-section — no meta-commentary, no JSON wrappers.
 """
 
 _EXECUTE_HUMAN = """\
 {anchor_block}
 
-━━━ PAST STEPS (summaries of previously written chapters) ━━━
+━━━ PAST STEPS (summaries of previously written sub-sections) ━━━
 {past_steps_block}
 
-━━━ CURRENT TASK ━━━
-Chapter {chapter_number}: {title}
-Target word count : {target_word_count}
+━━━ CURRENT TASK (SUB-SECTION) ━━━
+Sub-Section        : {title}
+Target word count : 600–800 words (strictly enforced)
 One-sentence goal : {one_sentence_summary}
 
 Key events to cover (in order):
@@ -201,10 +210,10 @@ Key events to cover (in order):
 Writing directive:
 {writing_directive}
 
-Continuity hooks (must be present near chapter end):
+Continuity hooks:
 {continuity_hooks_block}
 
-━━━ BEGIN CHAPTER PROSE ━━━
+━━━ BEGIN SUB-SECTION PROSE (600–800 WORDS) ━━━
 """
 
 
@@ -362,20 +371,20 @@ async def plan_step(state: BookWriterState) -> dict:
     raw = await _call_orchestration([system_msg, human_msg])
 
     # ── Parse JSON ────────────────────────────────────────────────────────────
-    emergency_plan = [
-        {
-            "chapter_number": i + 1,
-            "title": f"Chapter {i + 1}",
-            "target_word_count": settings.target_words_per_chapter,
-            "one_sentence_summary": f"Chapter {i + 1} of {anchor.total_chapters}",
-            "key_events": ["(to be determined)"],
-            "writing_directive": (
-                f"Write chapter {i + 1} following the story bible rules."
-            ),
-            "continuity_hooks": [],
-        }
-        for i in range(anchor.total_chapters)
-    ]
+    emergency_plan = []
+    for c in range(1, anchor.total_chapters + 1):
+        for s in range(1, 4):
+            emergency_plan.append({
+                "sub_section_id": f"Chapter {c}.{s}",
+                "chapter_number": c,
+                "sub_section_number": s,
+                "title": f"Chapter {c}.{s}: Sub-Section {s} of Chapter {c}",
+                "target_word_count": 750,
+                "one_sentence_summary": f"Sub-section {s} of Chapter {c}",
+                "key_events": [f"Beat 1 for {c}.{s}", f"Beat 2 for {c}.{s}", f"Beat 3 for {c}.{s}"],
+                "writing_directive": f"Draft Sub-Section {c}.{s} using the 6-step expansion sequence.",
+                "continuity_hooks": [f"Hook to next sub-section after {c}.{s}"],
+            })
 
     parsed = _parse_json_response(
         raw,
@@ -384,7 +393,7 @@ async def plan_step(state: BookWriterState) -> dict:
     )
     plan: list[dict] = parsed.get("plan", emergency_plan)
 
-    logger.info("plan_step | generated %d chapter tasks", len(plan))
+    logger.info("plan_step | generated %d sub-section tasks", len(plan))
 
     return {
         "plan": plan,

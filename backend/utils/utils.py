@@ -4,22 +4,20 @@ utils.py — General-Purpose Backend Utilities
 Utility functions shared across the backend that don't belong to a single
 module (i.e., not prompt assembly, not state schema, not memory management).
 
-Exposes individual loaders:
-  • load_story_bible()           — reads story_bible.md (Context Anchor)
-  • load_system_rules()          — reads system_rules.md (drafting agent hard constraints)
-  • load_book_outline()          — reads book_outline.md (planner's scene roadmap)
-  • load_case_studies()          — reads case_studies.md (empirical stories)
-  • load_audience_personas()     — reads audience_personas.md (Jordan & Sam profiles)
-  • load_stylistic_examples()    — reads stylistic_examples.md (DO/DO NOT voice cloned prose)
-  • load_front_and_back_matter() — reads front_and_back_matter.md (packaging specs)
-  • load_expansion_framework()   — reads expansion_framework.md (6-step sub-section blueprint)
+Exposes individual loaders for all 8 Context Anchor markdown files:
+  1. load_story_bible()           — reads story_bible.md
+  2. load_research_database()     — reads research_database.md
+  3. load_system_rules()          — reads system_rules.md
+  4. load_book_outline()          — reads book_outline.md
+  5. load_case_studies()          — reads case_studies.md
+  6. load_audience_personas()     — reads audience_personas.md
+  7. load_stylistic_examples()    — reads stylistic_examples.md
+  8. load_expansion_framework()   — reads expansion_framework.md
 
-Exposes master concatenator:
-  • load_all_context_documents() / load_full_context_string() — reads all 8 files
-    and concatenates them into one unified, comprehensive context string.
-
-All follow the same contract: fresh filesystem read on every call,
-graceful fallback on missing file, never returns None.
+Exposes master context loader:
+  • load_full_context_string() / load_all_context_documents()
+    Automatically reads all 8 files from the project directory and concatenates
+    them into a single, well-formatted string with clear section headings.
 """
 
 from __future__ import annotations
@@ -32,10 +30,10 @@ logger = logging.getLogger(__name__)
 # ── Path resolution ────────────────────────────────────────────────────────────
 # This file lives at:  <repo_root>/backend/utils/utils.py
 # Markdown files live at: <repo_root>/*.md
-# Walk up three parents: utils/ → backend/ → repo_root/
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
 _STORY_BIBLE_PATH            = _REPO_ROOT / "story_bible.md"
+_RESEARCH_DATABASE_PATH      = _REPO_ROOT / "research_database.md"
 _SYSTEM_RULES_PATH           = _REPO_ROOT / "system_rules.md"
 _BOOK_OUTLINE_PATH           = _REPO_ROOT / "book_outline.md"
 _CASE_STUDIES_PATH           = _REPO_ROOT / "case_studies.md"
@@ -79,12 +77,18 @@ def _load_markdown_file(target: Path, label: str) -> str:
         return f"# {label} — READ ERROR\n\n{exc}\n"
 
 
-# ── Public loaders ─────────────────────────────────────────────────────────────
+# ── Public individual loaders ──────────────────────────────────────────────────
 
 def load_story_bible(path: Path | str | None = None) -> str:
     """Read story_bible.md and return it as a plain string."""
     target = Path(path) if path is not None else _STORY_BIBLE_PATH
     return _load_markdown_file(target, "Story Bible (story_bible.md)")
+
+
+def load_research_database(path: Path | str | None = None) -> str:
+    """Read research_database.md and return it as a plain string."""
+    target = Path(path) if path is not None else _RESEARCH_DATABASE_PATH
+    return _load_markdown_file(target, "Research Database (research_database.md)")
 
 
 def load_system_rules(path: Path | str | None = None) -> str:
@@ -129,31 +133,34 @@ def load_expansion_framework(path: Path | str | None = None) -> str:
     return _load_markdown_file(target, "Expansion Framework (expansion_framework.md)")
 
 
+# ── Master Context Loader ──────────────────────────────────────────────────────
+
 def load_all_context_documents() -> dict[str, str]:
     """
-    Read all system markdown files and return them as a dictionary of filename -> content.
+    Read all 8 primary Context Anchor markdown files and return them as a dictionary.
     """
     return {
         "story_bible.md": load_story_bible(),
+        "research_database.md": load_research_database(),
         "system_rules.md": load_system_rules(),
         "book_outline.md": load_book_outline(),
         "case_studies.md": load_case_studies(),
         "audience_personas.md": load_audience_personas(),
         "stylistic_examples.md": load_stylistic_examples(),
-        "front_and_back_matter.md": load_front_and_back_matter(),
         "expansion_framework.md": load_expansion_framework(),
     }
 
 
 def load_full_context_string() -> str:
     """
-    Read all 8 system markdown files and concatenate them into one massive,
-    highly detailed context string with section dividers.
+    Automatically read all 8 Context Anchor markdown files from the project directory,
+    concatenate them into a single, well-formatted string with clear section headings,
+    and return it for injection into the context_anchor state variable.
     """
     docs = load_all_context_documents()
     parts = []
     for filename, content in docs.items():
-        divider = f"\n\n{'═' * 80}\n=== DOCUMENT: {filename} ===\n{'═' * 80}\n\n"
+        divider = f"\n\n{'═' * 80}\n=== CONTEXT DOCUMENT: {filename} ===\n{'═' * 80}\n\n"
         parts.append(divider + content.strip())
 
     return "".join(parts)
@@ -163,6 +170,10 @@ def load_full_context_string() -> str:
 
 def story_bible_path() -> Path:
     return _STORY_BIBLE_PATH
+
+
+def research_database_path() -> Path:
+    return _RESEARCH_DATABASE_PATH
 
 
 def system_rules_path() -> Path:

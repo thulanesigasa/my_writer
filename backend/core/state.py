@@ -25,14 +25,15 @@ from enum import Enum
 from typing import Annotated, Any
 
 try:
-    from langgraph.graph.message import add_messages
+    from langgraph.graph.message import add_messages  # type: ignore
 except ImportError:
     try:
-        from langgraph.graph import add_messages
+        from langgraph.graph import add_messages  # type: ignore
     except ImportError:
         def add_messages(left: list, right: list) -> list:
             """Fallback reducer if langgraph is not installed in interpreter environment."""
             return (left or []) + (right or [])
+
 
 from pydantic import BaseModel, Field
 from typing_extensions import TypedDict

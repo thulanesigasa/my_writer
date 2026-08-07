@@ -19,7 +19,7 @@ from pydantic import BaseModel
 from backend.core.state import initial_state
 from backend.core.memory import MemoryManager
 from backend.graph.graph import graph
-from backend.utils.utils import load_story_bible
+from backend.utils.utils import load_full_context_string
 
 router = APIRouter()
 
@@ -49,9 +49,8 @@ async def create_book(payload: CreateBookRequest) -> Any:
     """
     session_id = str(uuid.uuid4())
 
-    # ── Load story bible fresh from disk on every session ────────────────────
-    # This ensures any edits to story_bible.md are picked up without a restart.
-    story_bible = load_story_bible()
+    # ── Load all 8 Context Anchor markdown files concatenated from disk ──────
+    full_context = load_full_context_string()
 
     state = initial_state(
         book_title=payload.title,
@@ -59,7 +58,7 @@ async def create_book(payload: CreateBookRequest) -> Any:
         premise=payload.premise,
         total_chapters=payload.total_chapters,
         session_id=session_id,
-        story_bible_raw=story_bible,       # ← injected into ContextAnchor
+        story_bible_raw=full_context,       # ← injected into ContextAnchor
     )
     state["context_anchor"].target_audience = payload.target_audience
 
