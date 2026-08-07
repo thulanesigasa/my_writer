@@ -58,6 +58,7 @@ from tenacity import (
 from backend.core.config import settings
 from backend.core.state import BookWriterState
 from backend.utils.prompt_builder import build_context_anchor_block
+from backend.utils.utils import load_book_outline, load_system_rules
 
 logger = logging.getLogger(__name__)
 
@@ -130,11 +131,13 @@ tone, pacing, or structural requirement for this chapter",
 """
 
 _PLAN_HUMAN = """\
+{book_outline_block}
+
 {anchor_block}
 
 ━━━ TASK ━━━
-Using the Story Bible above as your binding contract, generate the complete
-chapter plan for a book with the following parameters:
+Using the Story Bible and Book Outline above as your binding contracts,
+generate the complete chapter plan for a book with the following parameters:
 
   Title            : {title}
   Genre            : {genre}
@@ -142,21 +145,22 @@ chapter plan for a book with the following parameters:
   Total chapters   : {total_chapters}
   Premise          : {premise}
 
+⚠️  CRITICAL: The plan you output must follow the chapter structure, sub-section
+order, opening scenes, beats, and word targets defined in the BOOK OUTLINE above.
+Do NOT invent a different structure. Do NOT merge or reorder chapters.
+Do NOT add chapters beyond total_chapters.
+
 Produce the JSON plan now.
 """
 
 
 _EXECUTE_SYSTEM = """\
-You are a professional novelist with mastery of {pov} point-of-view prose \
-written in {tense} tense.
+{system_rules}
 
-Your sole responsibility for this call is to write the full prose content
-of the chapter described in the CURRENT TASK section below.
+━━━ ADDITIONAL CRAFT RULES ━━━
+You are a professional novelist writing in {pov} POV, {tense} tense.
+Tone: {tone}
 
-━━━ HARD RULES (from Story Bible — these override everything) ━━━
-{global_rules}
-
-━━━ CRAFT RULES ━━━
 1. Write in continuous, flowing prose — no headers, no bullet points, no
    meta-commentary.  Output ONLY the chapter text.
 2. Maintain strict continuity with the PAST STEPS summaries.  Do not
@@ -165,7 +169,6 @@ of the chapter described in the CURRENT TASK section below.
 4. Cover ALL key_events listed in the CURRENT TASK.  Do not skip any.
 5. Reach the target_word_count (±10%).  Do not stop early.
 6. End the chapter at a natural closing beat that fulfils the continuity_hooks.
-7. Tone: {tone}
 """
 
 _EXECUTE_HUMAN = """\
@@ -320,9 +323,20 @@ async def plan_step(state: BookWriterState) -> dict:
 
     anchor_block = build_context_anchor_block(anchor)
 
+    # Load the book outline fresh from disk — constrains the planner to the
+    # pre-approved scene roadmap rather than inventing its own structure.
+    book_outline = load_book_outline()
+    book_outline_block = (
+        "━" * 52 + "\n"
+        "BOOK OUTLINE (BINDING CONTRACT — FOLLOW EXACTLY)\n"
+        "━" * 52 + "\n"
+        + book_outline.strip()
+    )
+
     system_msg = SystemMessage(content=_PLAN_SYSTEM)
     human_msg = HumanMessage(
         content=_PLAN_HUMAN.format(
+            book_outline_block=book_outline_block,
             anchor_block=anchor_block,
             title=anchor.title or "(untitled — generate a title)",
             genre=anchor.genre,
@@ -414,7 +428,9 @@ async def execute_step(state: BookWriterState) -> dict:
     # ── Build prompt blocks ───────────────────────────────────────────────────
     anchor_block = build_context_anchor_block(anchor)
 
-    global_rules = _extract_global_rules(anchor.story_bible_raw)
+    # Load system_rules.md fresh on every call — ensures the drafting agent
+    # always receives the most current absolute constraints.
+    system_rules_text = load_system_rules()
 
     if past_steps:
         past_steps_block = "\n\n".join(
@@ -434,13 +450,13 @@ async def execute_step(state: BookWriterState) -> dict:
         for hook in task.get("continuity_hooks", [])
     ) or "  (none specified)"
 
-    # ── System prompt (hard rules + craft rules) ──────────────────────────────
+    # ── System prompt (system_rules.md + craft rules) ─────────────────────────
     style = anchor.style_guide
     system_content = _EXECUTE_SYSTEM.format(
+        system_rules=system_rules_text,
         pov=style.pov,
         tense=style.tense,
         tone=style.tone or "professional, warm, and precise",
-        global_rules=global_rules,
     )
 
     # ── Human prompt (context + task) ─────────────────────────────────────────
