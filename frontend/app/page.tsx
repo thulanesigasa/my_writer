@@ -126,7 +126,7 @@ function SectionCard({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.04 }}
-      className={`bg-white rounded-2xl border flex flex-col overflow-hidden transition-all duration-200 hover:shadow-lg ${
+      className={`bg-white rounded border flex flex-col overflow-hidden transition-all duration-200 hover:shadow-lg ${
         isActive
           ? "border-indigo-700 ring-2 ring-indigo-100 shadow-lg"
           : "border-stone-200 shadow-sm hover:border-stone-300"
@@ -187,21 +187,21 @@ function SectionCard({
         {isActive && onApprove ? (
           <button
             onClick={onApprove}
-            className="w-full py-2.5 rounded-xl text-white font-bold text-xs uppercase tracking-widest transition hover:opacity-90"
+            className="w-full py-2.5 rounded text-white font-bold text-xs uppercase tracking-widest transition hover:opacity-90"
             style={{ backgroundColor: ACCENT }}
           >
             Approve &amp; Draft
           </button>
         ) : item.status === "completed" ? (
-          <div className="w-full py-2.5 rounded-xl bg-stone-50 border border-stone-100 text-emerald-600 font-semibold text-xs uppercase tracking-widest text-center">
+          <div className="w-full py-2.5 rounded bg-stone-50 border border-stone-100 text-emerald-600 font-semibold text-xs uppercase tracking-widest text-center">
             Complete
           </div>
         ) : item.status === "in_progress" ? (
-          <div className="w-full py-2.5 rounded-xl bg-amber-50 border border-amber-100 text-amber-600 font-semibold text-xs uppercase tracking-widest text-center">
+          <div className="w-full py-2.5 rounded bg-amber-50 border border-amber-100 text-amber-600 font-semibold text-xs uppercase tracking-widest text-center">
             Drafting
           </div>
         ) : (
-          <div className="w-full py-2.5 rounded-xl bg-stone-50 border border-stone-100 text-stone-400 font-medium text-xs uppercase tracking-widest text-center">
+          <div className="w-full py-2.5 rounded bg-stone-50 border border-stone-100 text-stone-400 font-medium text-xs uppercase tracking-widest text-center">
             Queued
           </div>
         )}
@@ -401,7 +401,7 @@ export default function HomePage() {
             placeholder="Search sections..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="w-full px-4 py-2.5 rounded-xl border border-stone-200 bg-stone-50 text-sm text-stone-700 placeholder-stone-400 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition"
+            className="w-full px-4 py-2.5 rounded border border-stone-200 bg-stone-50 text-sm text-stone-700 placeholder-stone-400 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition"
           />
         </div>
 
@@ -409,7 +409,7 @@ export default function HomePage() {
         <div className="flex items-center gap-3 ml-auto shrink-0">
           <button
             onClick={() => setShowConfig(!showConfig)}
-            className="px-4 py-2.5 rounded-xl border border-stone-200 text-sm font-semibold text-stone-500 hover:text-stone-800 hover:border-stone-300 transition"
+            className="px-4 py-2.5 rounded border border-stone-200 text-sm font-semibold text-stone-500 hover:text-stone-800 hover:border-stone-300 transition"
           >
             {showConfig ? "Close" : "Config"}
           </button>
@@ -418,24 +418,24 @@ export default function HomePage() {
             <a
               href={`http://localhost:8000/api/download/${sessionId}`}
               download
-              className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition"
+              className="px-5 py-2.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition"
             >
               Download
             </a>
           )}
 
           {isRunning ? (
-            <button onClick={handleStop} className="px-5 py-2.5 rounded-xl border border-rose-300 bg-rose-50 text-rose-600 font-bold text-sm hover:bg-rose-100 transition">
+            <button onClick={handleStop} className="px-5 py-2.5 rounded border border-rose-300 bg-rose-50 text-rose-600 font-bold text-sm hover:bg-rose-100 transition">
               Pause
             </button>
           ) : pipelineStatus === "waiting_for_approval" ? (
-            <button onClick={() => resumeGeneration(false)} className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition">
+            <button onClick={() => resumeGeneration(false)} className="px-5 py-2.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition">
               Approve
             </button>
           ) : (
             <button
               onClick={startGeneration}
-              className="px-6 py-2.5 rounded-xl text-white font-bold text-sm transition hover:opacity-90"
+              className="px-6 py-2.5 rounded text-white font-bold text-sm transition hover:opacity-90"
               style={{ backgroundColor: ACCENT }}
             >
               Generate
@@ -464,7 +464,7 @@ export default function HomePage() {
                   <input
                     value={val}
                     onChange={e => set(e.target.value)}
-                    className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-stone-800 focus:outline-none focus:border-indigo-400"
+                    className="w-full bg-stone-50 border border-stone-200 rounded px-4 py-2.5 text-sm text-stone-800 focus:outline-none focus:border-indigo-400"
                   />
                 </div>
               ))}
@@ -480,7 +480,7 @@ export default function HomePage() {
             initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="mx-8 mt-4 px-6 py-4 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-between"
+            className="mx-8 mt-4 px-6 py-4 rounded bg-rose-50 border border-rose-200 flex items-center justify-between"
           >
             <span className="text-sm text-rose-700">{errorMessage}</span>
             <button onClick={() => setErrorMessage(null)} className="text-sm font-semibold text-rose-400 hover:text-rose-700 transition ml-6">
@@ -506,7 +506,7 @@ export default function HomePage() {
             </div>
 
             {currentNode !== "idle" && (
-              <div className="mt-3 ml-5 px-3 py-2 rounded-lg bg-stone-50 border border-stone-100">
+              <div className="mt-3 ml-5 px-3 py-2 rounded bg-stone-50 border border-stone-100">
                 <p className="text-xs font-mono text-stone-500">{currentNode}</p>
               </div>
             )}
@@ -544,7 +544,7 @@ export default function HomePage() {
                 <button
                   key={i}
                   onClick={() => setViewTab(tab)}
-                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition"
+                  className="w-full flex items-center justify-between px-3 py-2.5 rounded text-sm transition"
                   style={
                     viewTab === tab && i < 3
                       ? { color: ACCENT, backgroundColor: "#EDE9FE", fontWeight: 600 }
@@ -571,7 +571,7 @@ export default function HomePage() {
                 initial={{ opacity: 0, scale: 0.97 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.97 }}
-                className="p-5 rounded-2xl bg-amber-50 border border-amber-200 space-y-4"
+                className="p-5 rounded bg-amber-50 border border-amber-200 space-y-4"
               >
                 <p className="text-xs font-black uppercase tracking-widest text-amber-600">Review Required</p>
                 <p className="text-sm text-amber-700 leading-relaxed">
@@ -584,7 +584,7 @@ export default function HomePage() {
                       type="text"
                       value={editableTaskTitle}
                       onChange={e => setEditableTaskTitle(e.target.value)}
-                      className="w-full bg-white border border-amber-200 rounded-xl px-3 py-2.5 text-sm text-stone-800 focus:outline-none focus:border-amber-400"
+                      className="w-full bg-white border border-amber-200 rounded px-3 py-2.5 text-sm text-stone-800 focus:outline-none focus:border-amber-400"
                     />
                   </div>
                   {editableDirective && (
@@ -594,21 +594,21 @@ export default function HomePage() {
                         rows={3}
                         value={editableDirective}
                         onChange={e => setEditableDirective(e.target.value)}
-                        className="w-full bg-white border border-amber-200 rounded-xl px-3 py-2.5 text-sm text-stone-800 focus:outline-none focus:border-amber-400 resize-none"
+                        className="w-full bg-white border border-amber-200 rounded px-3 py-2.5 text-sm text-stone-800 focus:outline-none focus:border-amber-400 resize-none"
                       />
                     </div>
                   )}
                 </div>
                 <button
                   onClick={() => resumeGeneration(false)}
-                  className="w-full py-3 rounded-xl text-white font-bold text-sm uppercase tracking-widest transition hover:opacity-90"
+                  className="w-full py-3 rounded text-white font-bold text-sm uppercase tracking-widest transition hover:opacity-90"
                   style={{ backgroundColor: ACCENT }}
                 >
                   Approve &amp; Draft
                 </button>
                 <button
                   onClick={() => resumeGeneration(true)}
-                  className="w-full py-3 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-700 font-bold text-sm uppercase tracking-widest transition"
+                  className="w-full py-3 rounded bg-amber-100 hover:bg-amber-200 text-amber-700 font-bold text-sm uppercase tracking-widest transition"
                 >
                   Edit &amp; Continue
                 </button>
@@ -641,7 +641,7 @@ export default function HomePage() {
 
             <div className="flex items-center gap-3">
               {/* Text tabs */}
-              <div className="flex border border-stone-200 rounded-xl overflow-hidden text-sm font-semibold">
+              <div className="flex border border-stone-200 rounded overflow-hidden text-sm font-semibold">
                 {(["all", "in_progress", "completed"] as ViewTab[]).map((t, i) => (
                   <button
                     key={t}
@@ -657,7 +657,7 @@ export default function HomePage() {
               {streamedProse && (
                 <button
                   onClick={() => setShowProseView(!showProseView)}
-                  className="px-4 py-2.5 rounded-xl border border-stone-200 text-sm font-semibold text-stone-600 hover:bg-stone-50 transition uppercase tracking-wide"
+                  className="px-4 py-2.5 rounded border border-stone-200 text-sm font-semibold text-stone-600 hover:bg-stone-50 transition uppercase tracking-wide"
                 >
                   {showProseView ? "Grid" : "Prose"}
                 </button>
@@ -672,7 +672,7 @@ export default function HomePage() {
             {pipelineStatus === "idle" && plan.length === 0 && (
               <div className="flex flex-col items-center justify-center h-full py-24 text-center">
                 <div
-                  className="w-24 h-24 rounded-3xl mb-8 flex items-center justify-center"
+                  className="w-24 h-24 rounded mb-8 flex items-center justify-center"
                   style={{ background: "linear-gradient(145deg, #EDE9FE, #C7D2FE)" }}
                 >
                   <span className="text-4xl font-black" style={{ color: ACCENT }}>S</span>
@@ -683,7 +683,7 @@ export default function HomePage() {
                 </p>
                 <button
                   onClick={startGeneration}
-                  className="px-8 py-4 rounded-2xl text-white font-bold text-base uppercase tracking-widest shadow-xl shadow-indigo-200 transition hover:opacity-90"
+                  className="px-8 py-4 rounded text-white font-bold text-base uppercase tracking-widest shadow-xl shadow-indigo-200 transition hover:opacity-90"
                   style={{ backgroundColor: ACCENT }}
                 >
                   Generate Manuscript
@@ -695,7 +695,7 @@ export default function HomePage() {
             {pipelineStatus === "planning" && plan.length === 0 && (
               <div className="flex flex-col items-center justify-center py-32 text-center">
                 <div
-                  className="w-20 h-20 rounded-2xl mb-6 flex items-center justify-center"
+                  className="w-20 h-20 rounded mb-6 flex items-center justify-center"
                   style={{ background: "linear-gradient(145deg, #EDE9FE, #C7D2FE)" }}
                 >
                   <motion.span
@@ -715,7 +715,7 @@ export default function HomePage() {
             {/* ── Prose view ── */}
             {showProseView && streamedProse && (
               <div className="max-w-3xl mx-auto">
-                <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-10 md:p-14">
+                <div className="bg-white rounded border border-stone-100 shadow-sm p-10 md:p-14">
                   <div className="flex items-start justify-between mb-8 pb-6 border-b border-stone-100 gap-4">
                     <div>
                       <p className="text-xs font-bold uppercase tracking-widest text-stone-400 mb-1">Current Draft</p>
@@ -745,7 +745,7 @@ export default function HomePage() {
                 </div>
 
                 {pipelineStatus === "compiling" && (
-                  <div className="mt-5 p-5 rounded-2xl border border-indigo-100 bg-indigo-50 flex items-center gap-4">
+                  <div className="mt-5 p-5 rounded border border-indigo-100 bg-indigo-50 flex items-center gap-4">
                     <motion.span
                       className="text-sm font-black uppercase tracking-widest"
                       animate={{ opacity: [0.4, 1, 0.4] }}
@@ -762,7 +762,7 @@ export default function HomePage() {
                   <motion.div
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="mt-5 p-6 rounded-2xl border border-emerald-200 bg-emerald-50 flex items-center justify-between gap-6"
+                    className="mt-5 p-6 rounded border border-emerald-200 bg-emerald-50 flex items-center justify-between gap-6"
                   >
                     <div>
                       <p className="text-sm font-black uppercase tracking-widest text-emerald-800 mb-0.5">Book Complete</p>
@@ -771,7 +771,7 @@ export default function HomePage() {
                     <a
                       href={`http://localhost:8000/api/download/${sessionId}`}
                       download
-                      className="shrink-0 px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition"
+                      className="shrink-0 px-6 py-3 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition"
                     >
                       Download .md
                     </a>
@@ -810,7 +810,7 @@ export default function HomePage() {
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="mt-10 p-8 rounded-3xl text-white flex items-center justify-between shadow-xl"
+                    className="mt-10 p-8 rounded text-white flex items-center justify-between shadow-xl"
                     style={{ background: `linear-gradient(135deg, ${ACCENT}, #1D4ED8)` }}
                   >
                     <div>
@@ -825,7 +825,7 @@ export default function HomePage() {
                     <a
                       href={`http://localhost:8000/api/download/${sessionId}`}
                       download
-                      className="shrink-0 px-8 py-4 rounded-2xl bg-white font-bold text-base uppercase tracking-widest hover:bg-indigo-50 transition shadow-md"
+                      className="shrink-0 px-8 py-4 rounded bg-white font-bold text-base uppercase tracking-widest hover:bg-indigo-50 transition shadow-md"
                       style={{ color: ACCENT }}
                     >
                       Download Manuscript

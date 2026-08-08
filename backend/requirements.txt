@@ -5,12 +5,14 @@ python-multipart==0.0.9
 sse-starlette==2.1.2
 
 # ─── LangGraph / LangChain ────────────────────────────────────────────────────
+# langgraph 0.2.73 is compatible with langchain-core 0.3.x
+# langchain-tavily requires langchain>=0.3.20, so we upgrade the ecosystem
 langgraph==0.2.73
-langchain==0.2.16
-langchain-core==0.2.43
-langchain-openai==0.1.25
-langchain-community==0.2.16
-langchain-tavily>=0.1.0
+langchain==0.3.25
+langchain-core==0.3.65
+langchain-openai==0.3.18
+langchain-community==0.3.25
+langchain-tavily==0.2.18
 
 # ─── OpenAI ───────────────────────────────────────────────────────────────────
 openai==1.40.0
