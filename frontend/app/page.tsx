@@ -14,6 +14,12 @@ import {
   Database,
   Copy,
   Check,
+  Cpu,
+  Layers,
+  ArrowRight,
+  GitCommit,
+  CheckCircle,
+  Zap,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -41,10 +47,10 @@ interface SubSectionTask {
   draft_prose?: string;
 }
 
-// ── SVG Brand Tech Logos (clean, standalone) ──────────────────────────────────
+// ── Black Standalone Footer SVGs (a bit smaller w-3.5 h-3.5, all black) ──────
 function LangGraphLogo() {
   return (
-    <svg className="w-5 h-5 inline-block align-middle text-[#10B981]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <svg className="w-3.5 h-3.5 inline-block align-middle text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
     </svg>
   );
@@ -52,7 +58,7 @@ function LangGraphLogo() {
 
 function OpenAILogo() {
   return (
-    <svg className="w-5 h-5 inline-block align-middle fill-current text-slate-800" viewBox="0 0 24 24">
+    <svg className="w-3.5 h-3.5 inline-block align-middle fill-current text-black" viewBox="0 0 24 24">
       <path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.535-3.0137l.142.0852 4.783 2.7582a.771.771 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.504 4.504 0 0 1 2.3408 7.8956zm16.0993 3.8558L12.6007 8.3829l2.02-1.1638a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.3953-.6859zm2.0107-3.0231l-.1419-.0852-4.7735-2.7582a.7758.7758 0 0 0-.7854 0L8.9072 9.2535V6.9211a.0757.0757 0 0 1 .0332-.0615l4.8303-2.7866a4.5016 4.5016 0 0 1 6.6802 4.66zM8.3061 12.863l-2.02-1.1638a.0804.0804 0 0 1-.038-.052V6.0646a4.5016 4.5016 0 0 1 7.3757-3.4537l-.1419.0804L8.7036 5.4495a.7948.7948 0 0 0-.3927.6813zm1.0936-2.3655l2.6005-1.5 2.6005 1.5v3.0001l-2.6005 1.5-2.6005-1.5z"/>
     </svg>
   );
@@ -60,89 +66,66 @@ function OpenAILogo() {
 
 function RedisLogo() {
   return (
-    <svg className="w-5 h-5 inline-block align-middle" viewBox="0 0 24 24" fill="none">
-      <path d="M2 17.5L12 22L22 17.5M2 12.5L12 17L22 12.5M12 2L2 6.5L12 11L22 6.5L12 2Z" stroke="#D82C20" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+    <svg className="w-3.5 h-3.5 inline-block align-middle text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 17.5L12 22L22 17.5M2 12.5L12 17L22 12.5M12 2L2 6.5L12 11L22 6.5L12 2Z" />
     </svg>
   );
 }
 
 function PythonLogo() {
   return (
-    <svg className="w-5 h-5 inline-block align-middle" viewBox="0 0 24 24">
-      <path fill="#3776AB" d="M11.88 2C6.9 2 7.23 4.16 7.23 4.16V6.4H12V7.15H5.06S2 6.8 2 11.78c0 4.97 2.67 4.8 2.67 4.8h1.6v-2.28s-.09-2.72 2.67-2.72h4.54s2.58.04 2.58-2.5V4.66S16.5 2 11.88 2zm-1.42 1.48a.95.95 0 1 1 0 1.9.95.95 0 0 1 0-1.9z"/>
-      <path fill="#FFD43B" d="M12.12 22c4.98 0 4.65-2.16 4.65-2.16V17.6H12v-.75h6.94S22 17.2 22 12.22c0-4.97-2.67-4.8-2.67-4.8h-1.6v2.28s.09 2.72-2.67 2.72h-4.54s-2.58-.04-2.58 2.5v4.5s-.44 2.66 4.18 2.66zm1.42-1.48a.95.95 0 1 1 0-1.9.95.95 0 0 1 0 1.9z"/>
+    <svg className="w-3.5 h-3.5 inline-block align-middle fill-current text-black" viewBox="0 0 24 24">
+      <path d="M11.88 2C6.9 2 7.23 4.16 7.23 4.16V6.4H12V7.15H5.06S2 6.8 2 11.78c0 4.97 2.67 4.8 2.67 4.8h1.6v-2.28s-.09-2.72 2.67-2.72h4.54s2.58.04 2.58-2.5V4.66S16.5 2 11.88 2zm-1.42 1.48a.95.95 0 1 1 0 1.9.95.95 0 0 1 0-1.9z"/>
+      <path d="M12.12 22c4.98 0 4.65-2.16 4.65-2.16V17.6H12v-.75h6.94S22 17.2 22 12.22c0-4.97-2.67-4.8-2.67-4.8h-1.6v2.28s.09 2.72-2.67 2.72h-4.54s-2.58-.04-2.58 2.5v4.5s-.44 2.66 4.18 2.66zm1.42-1.48a.95.95 0 1 1 0-1.9.95.95 0 0 1 0 1.9z"/>
     </svg>
   );
 }
 
 function TailwindLogo() {
   return (
-    <svg className="w-5 h-5 inline-block align-middle" viewBox="0 0 24 24">
-      <path fill="#06B6D4" d="M12.001 4.8c-3.2 0-5.2 1.6-6 4.8 1.2-1.6 2.6-2.2 4.2-1.8.913.228 1.565.89 2.288 1.624C13.666 10.618 15.027 12 18.001 12c3.2 0 5.2-1.6 6-4.8-1.2 1.6-2.6 2.2-4.2 1.8-.913-.228-1.565-.89-2.288-1.624C16.337 6.182 14.976 4.8 12.001 4.8zm-6 7.2c-3.2 0-5.2 1.6-6 4.8 1.2-1.6 2.6-2.2 4.2-1.8.913.228 1.565.89 2.288 1.624C7.666 17.818 9.027 19.2 12.001 19.2c3.2 0 5.2-1.6 6-4.8-1.2 1.6-2.6 2.2-4.2 1.8-.913-.228-1.565-.89-2.288-1.624C10.337 13.382 8.976 12 6.001 12z"/>
+    <svg className="w-3.5 h-3.5 inline-block align-middle fill-current text-black" viewBox="0 0 24 24">
+      <path d="M12.001 4.8c-3.2 0-5.2 1.6-6 4.8 1.2-1.6 2.6-2.2 4.2-1.8.913.228 1.565.89 2.288 1.624C13.666 10.618 15.027 12 18.001 12c3.2 0 5.2-1.6 6-4.8-1.2 1.6-2.6 2.2-4.2 1.8-.913-.228-1.565-.89-2.288-1.624C16.337 6.182 14.976 4.8 12.001 4.8zm-6 7.2c-3.2 0-5.2 1.6-6 4.8 1.2-1.6 2.6-2.2 4.2-1.8.913.228 1.565.89 2.288 1.624C7.666 17.818 9.027 19.2 12.001 19.2c3.2 0 5.2-1.6 6-4.8-1.2 1.6-2.6 2.2-4.2 1.8-.913-.228-1.565-.89-2.288-1.624C10.337 13.382 8.976 12 6.001 12z"/>
     </svg>
   );
 }
 
-// ── Initial 5-Chapter Outline ─────────────────────────────────────────────────
-const INITIAL_PLAN: SubSectionTask[] = [
-  {
-    sub_section_id: "sec-1",
-    chapter_number: 1,
-    title: "Chapter 1: The Architecture of Instinct",
-    target_word_count: 2500,
-    one_sentence_summary:
-      "Dismantling the conflation between reflex, instinct, and intuition through Dr. Amara Osei's ER case study.",
-    writing_directive:
-      "Open with Dr. Osei's ER scene. Define reflex (spinal arc), instinct (species predisposition), and intuition (rapid pattern matching).",
-    status: "completed",
-    draft_prose: `# Chapter 1: The Architecture of Instinct\n\n## The Emergency Room at 3:14 AM\n\nDr. Amara Osei stood at the foot of Bed 4 in the acute trauma bay. The patient, a forty-two-year-old software architect named David Vance, had arrived twenty minutes earlier complaining of non-specific abdominal discomfort. By every objective metric available to modern medicine, he was stable.\n\nHis blood pressure was 122 over 78. His pulse oxygenation registered 98 percent. His bedside ultrasound showed no free fluid in the peritoneal cavity, and his preliminary blood panel was unremarkable. Yet Dr. Osei felt an unmistakable contraction in her chest — a somatic signal earned over sixteen years of critical care.\n\n"Prepare Operating Room 3," she told the attending charge nurse.\n\n"Dr. Osei," the surgical resident hesitated, "the CT scan hasn't come back yet, and his vitals are completely within normal limits."\n\n"Prepare OR 3 now," she repeated, her voice even but unyielding.\n\nForty minutes later, while opening the abdomen, the surgical team discovered a micro-perforation of the retroperitoneal artery. Had they waited for the routine CT results to process, Mr. Vance would have hemorrhaged silently into his abdomen before dawn. What Dr. Osei experienced was not a sixth sense or mystical foresight. It was compressed expertise operating below the threshold of conscious language.`
-  },
-  {
-    sub_section_id: "sec-2",
-    chapter_number: 2,
-    title: "Chapter 2: The Limbic System Myth & Reality",
-    target_word_count: 2500,
-    one_sentence_summary:
-      "Deconstructing MacLean's Triune Brain myth using Antonio Damasio's Somatic Marker Hypothesis and Phineas Gage's clinical case.",
-    writing_directive:
-      "Re-examine Phineas Gage and Damasio's Iowa Gambling Task. Prove that emotion is the biological precondition for rational decision-making.",
-    status: "in_progress",
-    draft_prose: `# Chapter 2: The Limbic System Myth & Reality\n\n## The Iron Bar and the Illusion of Rationality\n\nOn September 13, 1848, in Cavendish, Vermont, a twenty-five-year-old railroad construction foreman named Phineas Gage suffered one of the most famous injuries in medical history. A three-foot-seven-inch tamping iron was driven directly through his left cheek, penetrating the ventromedial prefrontal cortex and exiting the top of his skull.\n\nGage survived the physical trauma. He could walk, speak, and calculate arithmetic with full retention of his intellectual memory. Yet, as his physician Dr. John Harlow famously observed, "Gage was no longer Gage." The disciplined, balanced foreman became erratic, irreverent, and utterly incapable of executing long-term plans.\n\nDecades later, neuroscientist Antonio Damasio realized what Gage's tragic case demonstrated: emotion and bodily signals (somatic markers) are not adversaries of rational choice. They are its indispensable guidance system.`
-  },
-  {
-    sub_section_id: "sec-3",
-    chapter_number: 3,
-    title: "Chapter 3: Evolutionary Importance & RPD Model",
-    target_word_count: 2500,
-    one_sentence_summary:
-      "Gary Klein's Recognition-Primed Decision model for firefighters and epigenetic transmission of ancestral survival adaptations.",
-    writing_directive:
-      "Explore Gary Klein's RPD model with fire commanders and the Dutch Hunger Winter epigenetics data. Show how ancestral memory informs bodily gut signals.",
-    status: "pending",
-  },
-  {
-    sub_section_id: "sec-4",
-    chapter_number: 4,
-    title: "Chapter 4: The Power to Destroy and Create",
-    target_word_count: 2500,
-    one_sentence_summary:
-      "The dual nature of subcortical processing: oxytocin-driven tribalism vs. Default Mode Network creative insight.",
-    writing_directive:
-      "Analyze the oxytocin paradox (in-group bonding vs out-group derogation) alongside DMN mind-wandering and creative breakthroughs.",
-    status: "pending",
-  },
-  {
-    sub_section_id: "sec-5",
-    chapter_number: 5,
-    title: "Chapter 5: Designing for Integration & Mastery",
-    target_word_count: 2500,
-    one_sentence_summary:
-      "Practical cognitive architecture for calibrating gut feelings, environment design, and deliberate practice.",
-    writing_directive:
-      "Provide actionable cognitive tools to audit, calibrate, and synthesize analytical thinking with bodily intuition.",
-    status: "pending",
-  }
-];
+// ── Specific Custom Status & Chapter Icons ─────────────────────────────────────
+
+// Black Writing Icon (https://www.svgrepo.com/svg/488479/writing)
+function WritingIcon({ className = "w-6 h-6 text-black" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+    </svg>
+  );
+}
+
+// In Progress Icon (https://www.svgrepo.com/svg/446775/in-progress)
+function InProgressIcon() {
+  return (
+    <svg className="w-3.5 h-3.5 text-amber-600 inline-block align-middle shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+    </svg>
+  );
+}
+
+// Circle Check Filled Icon (https://www.svgrepo.com/svg/500507/circle-check-filled)
+function CircleCheckFilledIcon() {
+  return (
+    <svg className="w-3.5 h-3.5 text-green-600 inline-block align-middle fill-current shrink-0" viewBox="0 0 24 24">
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+    </svg>
+  );
+}
+
+// Sketch Draft / Drafting Live Icon (https://www.svgrepo.com/svg/301272/sketch-draft)
+function SketchDraftIcon() {
+  return (
+    <svg className="w-3.5 h-3.5 text-orange-600 inline-block align-middle shrink-0 animate-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
+    </svg>
+  );
+}
 
 const CONTEXT_FILES = [
   { name: "story_bible.md", label: "Story Bible & Personas", size: "14.2 KB", type: "Core Thesis" },
@@ -158,19 +141,19 @@ export default function DashboardPage() {
   const [statusMessage, setStatusMessage] = useState("Ready to generate");
   const [currentNode, setCurrentNode] = useState<string>("idle");
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [plan, setPlan] = useState<SubSectionTask[]>(INITIAL_PLAN);
-  const [activeTaskTitle, setActiveTaskTitle] = useState<string>(INITIAL_PLAN[0].title);
-  const [streamedProse, setStreamedProse] = useState<string>(INITIAL_PLAN[0].draft_prose || "");
-  const [pastSummaries, setPastSummaries] = useState<string[]>([
-    "Chapter 1 summarized: Defined reflex vs instinct vs intuition through Dr. Osei trauma ER case."
-  ]);
-  const [wordCount, setWordCount] = useState<number>(3150);
+  
+  // Clean initial state (no mock data!)
+  const [plan, setPlan] = useState<SubSectionTask[]>([]);
+  const [activeTaskTitle, setActiveTaskTitle] = useState<string>("");
+  const [streamedProse, setStreamedProse] = useState<string>("");
+  const [pastSummaries, setPastSummaries] = useState<string[]>([]);
+  const [wordCount, setWordCount] = useState<number>(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   // Form / Edit states
-  const [editableTaskTitle, setEditableTaskTitle] = useState<string>(INITIAL_PLAN[1].title);
-  const [editableDirective, setEditableDirective] = useState<string>(INITIAL_PLAN[1].writing_directive || "");
+  const [editableTaskTitle, setEditableTaskTitle] = useState<string>("");
+  const [editableDirective, setEditableDirective] = useState<string>("");
   const [bookTitle, setBookTitle] = useState("The Power of Instinct");
   const [genre, setGenre] = useState("Popular Neuroscience & Leadership");
   const [premise, setPremise] = useState(
@@ -192,7 +175,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const computed = streamedProse.trim().split(/\s+/).filter(Boolean).length;
-    if (computed > 0) setWordCount(2500 + computed);
+    if (computed > 0) setWordCount(computed);
   }, [streamedProse]);
 
   // ── SSE Stream Reader ───────────────────────────────────────────────────────
@@ -399,6 +382,17 @@ export default function DashboardPage() {
     { id: "settings" as ActiveTab, label: "Book Settings", icon: Settings },
   ];
 
+  const pipelineNodes = [
+    { name: "plan_step", role: "GPT-4o-mini generates 5-chapter sub-section JSON plan", tech: "GPT-4o-mini" },
+    { name: "human_review", role: "HITL Interruption — User approves or edits next chapter directive", tech: "Human Review" },
+    { name: "research_step", role: "Tavily Search Agent gathers empirical studies & case facts", tech: "Tavily API" },
+    { name: "execute_step", role: "GPT-4o drafts 2,500-word prose & streams tokens live via SSE", tech: "GPT-4o" },
+    { name: "replan_step", role: "GPT-4o-mini compresses draft into 150-word summary, clears context", tech: "GPT-4o-mini" },
+    { name: "front_matter_step", role: "Generates Preface, Note on Neuroscience, Table of Contents", tech: "GPT-4o" },
+    { name: "back_matter_step", role: "Generates Conclusion, Glossary, Acknowledgments", tech: "GPT-4o" },
+    { name: "compile_book_step", role: "Compiles full manuscript to backend/output/<Title>_Final.md", tech: "Disk I/O" },
+  ];
+
   return (
     <div className="min-h-screen bg-gray-50 flex font-sans text-black">
       {/* ── LEFT SIDEBAR (ts-industries style) ───────────────────────────────── */}
@@ -597,58 +591,79 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* Cards Grid */}
-              <div className="grid md:grid-cols-3 gap-6">
-                {filteredPlan.map((ch, idx) => {
-                  const isDone = ch.status === "completed";
-                  const isLive = ch.status === "in_progress";
+              {/* Cards Grid or Clean Empty State when no chapters generated */}
+              {plan.length === 0 ? (
+                <div className="bg-white border border-black/10 rounded-3xl p-12 text-center max-w-xl mx-auto my-8 space-y-4 shadow-sm">
+                  <div className="w-16 h-16 bg-black/5 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <WritingIcon className="w-8 h-8 text-black" />
+                  </div>
+                  <h3 className="text-xl font-bold text-black">No Chapters Generated Yet</h3>
+                  <p className="text-sm text-black/60 leading-relaxed">
+                    Click <span className="font-semibold text-black">Generate Manuscript</span> above to launch the AI Plan-and-Execute pipeline.
+                  </p>
+                  <button
+                    onClick={startGeneration}
+                    className="px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-xl text-sm transition-colors shadow-sm"
+                  >
+                    Generate Manuscript
+                  </button>
+                </div>
+              ) : (
+                <div className="grid md:grid-cols-3 gap-6">
+                  {filteredPlan.map((ch, idx) => {
+                    const isDone = ch.status === "completed";
+                    const isLive = ch.status === "in_progress";
 
-                  return (
-                    <div
-                      key={ch.sub_section_id || idx}
-                      onClick={() => {
-                        setActiveTaskTitle(ch.title);
-                        if (ch.draft_prose) setStreamedProse(ch.draft_prose);
-                        setActiveTab("editor");
-                      }}
-                      className="bg-white border border-black/10 rounded-2xl p-6 hover:border-orange-500 transition-all cursor-pointer group shadow-sm flex flex-col justify-between"
-                    >
-                      <div>
-                        {/* Icon Badge */}
-                        <div className="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center mb-4 group-hover:bg-orange-500 transition-colors">
-                          <FileText className="w-6 h-6 text-orange-600 group-hover:text-white transition-colors" />
+                    return (
+                      <div
+                        key={ch.sub_section_id || idx}
+                        onClick={() => {
+                          setActiveTaskTitle(ch.title);
+                          if (ch.draft_prose) setStreamedProse(ch.draft_prose);
+                          setActiveTab("editor");
+                        }}
+                        className="bg-white border border-black/10 rounded-2xl p-6 hover:border-orange-500 transition-all cursor-pointer group shadow-sm flex flex-col justify-between"
+                      >
+                        <div>
+                          {/* Black Writing SVG Icon (https://www.svgrepo.com/svg/488479/writing) */}
+                          <div className="w-12 h-12 bg-black/5 rounded-xl flex items-center justify-center mb-4 group-hover:bg-black group-hover:text-white transition-colors">
+                            <WritingIcon className="w-6 h-6 text-black group-hover:text-white transition-colors" />
+                          </div>
+
+                          <h3 className="text-lg font-bold text-black mb-1 group-hover:text-orange-600 transition-colors leading-snug">
+                            {ch.title}
+                          </h3>
+
+                          <p className="text-sm text-black/60 mb-4 line-clamp-3 leading-relaxed">
+                            {ch.one_sentence_summary || ch.writing_directive}
+                          </p>
                         </div>
 
-                        <h3 className="text-lg font-bold text-black mb-1 group-hover:text-orange-600 transition-colors leading-snug">
-                          {ch.title}
-                        </h3>
+                        <div className="pt-4 border-t border-black/5 flex items-center justify-between text-xs font-medium text-black/40">
+                          <span>{(ch.target_word_count || 2500).toLocaleString()} words</span>
 
-                        <p className="text-sm text-black/60 mb-4 line-clamp-3 leading-relaxed">
-                          {ch.one_sentence_summary || ch.writing_directive}
-                        </p>
+                          {isDone ? (
+                            <span className="text-green-700 bg-green-50 px-2.5 py-1 rounded-md font-semibold flex items-center gap-1.5">
+                              <CircleCheckFilledIcon />
+                              Completed
+                            </span>
+                          ) : isLive ? (
+                            <span className="text-orange-700 bg-orange-50 px-2.5 py-1 rounded-md font-semibold flex items-center gap-1.5">
+                              <SketchDraftIcon />
+                              Drafting Live
+                            </span>
+                          ) : (
+                            <span className="text-black/60 bg-black/5 px-2.5 py-1 rounded-md font-semibold flex items-center gap-1.5">
+                              <InProgressIcon />
+                              Queued
+                            </span>
+                          )}
+                        </div>
                       </div>
-
-                      <div className="pt-4 border-t border-black/5 flex items-center justify-between text-xs font-medium text-black/40">
-                        <span>{(ch.target_word_count || 2500).toLocaleString()} words</span>
-
-                        {isDone ? (
-                          <span className="text-green-600 bg-green-50 px-2.5 py-1 rounded-md font-semibold">
-                            Completed
-                          </span>
-                        ) : isLive ? (
-                          <span className="text-orange-600 bg-orange-50 px-2.5 py-1 rounded-md font-semibold animate-pulse">
-                            Drafting Live
-                          </span>
-                        ) : (
-                          <span className="text-black/40 bg-black/5 px-2.5 py-1 rounded-md font-semibold">
-                            Queued
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
@@ -661,25 +676,29 @@ export default function DashboardPage() {
                     <span className="text-xs font-bold text-orange-600 uppercase tracking-widest block mb-1">
                       Active Manuscript Chapter
                     </span>
-                    <h2 className="text-2xl font-bold text-black">{activeTaskTitle}</h2>
+                    <h2 className="text-2xl font-bold text-black">
+                      {activeTaskTitle || "No Active Chapter"}
+                    </h2>
                   </div>
 
-                  <button
-                    onClick={handleCopyProse}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-black/5 hover:bg-black/10 text-black font-semibold rounded-xl text-xs transition-colors"
-                  >
-                    {copied ? (
-                      <>
-                        <Check className="w-4 h-4 text-green-600" />
-                        Copied!
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-4 h-4" />
-                        Copy Markdown
-                      </>
-                    )}
-                  </button>
+                  {streamedProse && (
+                    <button
+                      onClick={handleCopyProse}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-black/5 hover:bg-black/10 text-black font-semibold rounded-xl text-xs transition-colors"
+                    >
+                      {copied ? (
+                        <>
+                          <Check className="w-4 h-4 text-green-600" />
+                          Copied!
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-4 h-4" />
+                          Copy Markdown
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
 
                 <div className="prose-reader whitespace-pre-wrap">
@@ -726,7 +745,9 @@ export default function DashboardPage() {
 
                     <div className="mt-6 pt-4 border-t border-black/5 flex items-center justify-between text-xs font-medium text-black/50">
                       <span>Status: System Anchor</span>
-                      <span className="text-green-600 font-bold">Active in Memory</span>
+                      <span className="text-green-600 font-bold flex items-center gap-1">
+                        <CircleCheckFilledIcon /> Active Memory
+                      </span>
                     </div>
                   </div>
                 ))}
@@ -734,46 +755,65 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* ── TAB 4: PIPELINE INSPECTOR ─────────────────────────────────────── */}
+          {/* ── TAB 4: REDESIGNED PIPELINE INSPECTOR ──────────────────────────── */}
           {activeTab === "pipeline" && (
             <div className="max-w-4xl mx-auto space-y-6 flex-1 w-full">
               <div>
-                <h2 className="text-2xl font-bold text-black mb-1">LangGraph Execution Inspector</h2>
+                <h2 className="text-2xl font-bold text-black mb-1">LangGraph Execution Architecture</h2>
                 <p className="text-black/60">
-                  State machine graph nodes with Redis checkpoint persistence and Human-in-the-Loop review points.
+                  Real-time node execution graph with Redis checkpoint persistence and Human-in-the-Loop review points.
                 </p>
               </div>
 
-              <div className="bg-white border border-black/10 rounded-3xl p-8 shadow-sm space-y-4 font-mono text-xs">
-                {[
-                  { name: "plan_step", role: "GPT-4o-mini generates 5-chapter sub-section JSON plan" },
-                  { name: "human_review", role: "HITL Interruption — User approves or edits next chapter directive" },
-                  { name: "research_step", role: "Tavily Search Agent gathers empirical studies & case facts" },
-                  { name: "execute_step", role: "GPT-4o drafts 2,500-word prose & streams tokens live via SSE" },
-                  { name: "replan_step", role: "GPT-4o-mini compresses draft into 150-word summary, clears context" },
-                  { name: "front_matter_step", role: "Generates Preface, Note on Neuroscience, Table of Contents" },
-                  { name: "back_matter_step", role: "Generates Conclusion, Glossary, Acknowledgments" },
-                  { name: "compile_book_step", role: "Compiles full manuscript to backend/output/<Title>_Final.md" },
-                ].map((step, i) => (
-                  <div
-                    key={i}
-                    className={`p-4 rounded-2xl border flex items-center justify-between transition-colors ${
-                      currentNode === step.name
-                        ? "bg-orange-50 border-orange-500 text-orange-600 font-bold"
-                        : "bg-black/[0.02] border-black/5 text-black/80"
-                    }`}
-                  >
-                    <div>
-                      <span className="font-bold text-sm block mb-0.5">{i + 1}. {step.name}</span>
-                      <span className="font-sans text-xs text-black/60">{step.role}</span>
-                    </div>
-                    {currentNode === step.name && (
-                      <span className="px-3 py-1 bg-orange-500 text-white rounded-full text-xs font-bold uppercase tracking-wider">
-                        Running
-                      </span>
-                    )}
-                  </div>
-                ))}
+              <div className="bg-white border border-black/10 rounded-3xl p-6 sm:p-8 shadow-sm space-y-4">
+                <div className="relative pl-6 space-y-4 before:absolute before:left-3.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-black/10">
+                  {pipelineNodes.map((step, i) => {
+                    const isActive = currentNode === step.name;
+                    return (
+                      <div
+                        key={i}
+                        className={`relative p-5 rounded-2xl border transition-all ${
+                          isActive
+                            ? "bg-orange-50/80 border-orange-500 text-black shadow-md ring-2 ring-orange-200"
+                            : "bg-white border-black/10 text-black/80 hover:border-black/20"
+                        }`}
+                      >
+                        {/* Timeline Node Dot */}
+                        <div
+                          className={`absolute -left-9 top-6 w-6 h-6 rounded-full border-2 flex items-center justify-center text-[10px] font-bold ${
+                            isActive
+                              ? "bg-orange-500 border-orange-500 text-white animate-pulse"
+                              : "bg-white border-black/30 text-black/60"
+                          }`}
+                        >
+                          {i + 1}
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-bold text-sm text-black">
+                              {step.name}
+                            </span>
+                            <span className="text-[10px] font-bold uppercase tracking-wider bg-black/5 text-black/70 px-2 py-0.5 rounded-md">
+                              {step.tech}
+                            </span>
+                          </div>
+
+                          {isActive && (
+                            <span className="self-start sm:self-auto px-3 py-1 bg-orange-500 text-white rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-xs">
+                              <Zap className="w-3 h-3 fill-current" />
+                              Active Step
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="text-sm text-black/70 leading-relaxed font-sans">
+                          {step.role}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           )}
@@ -838,7 +878,7 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* ── FOOTER WITH ONLY RAW SVGs SEPARATED BY BULLETS (NO WORDS, NO BOX) ── */}
+          {/* ── FOOTER WITH BLACK STANDALONE SVGs & BULLETS ───────────────────── */}
           <footer className="mt-auto pt-8 border-t border-black/10 text-xs text-black/60 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <span className="font-bold text-black text-sm">ts-industries</span>
@@ -846,16 +886,16 @@ export default function DashboardPage() {
               <span className="font-medium text-black/70">Scriptorium AI Book Writer Pipeline</span>
             </div>
 
-            {/* Standalone SVGs separated by • bullets — no words, no container boxes */}
-            <div className="flex items-center justify-center gap-3 text-black/40">
+            {/* Standalone black SVGs separated by • bullets */}
+            <div className="flex items-center justify-center gap-3 text-black">
               <LangGraphLogo />
-              <span className="font-bold">•</span>
+              <span className="font-bold text-black/40">•</span>
               <OpenAILogo />
-              <span className="font-bold">•</span>
+              <span className="font-bold text-black/40">•</span>
               <RedisLogo />
-              <span className="font-bold">•</span>
+              <span className="font-bold text-black/40">•</span>
               <PythonLogo />
-              <span className="font-bold">•</span>
+              <span className="font-bold text-black/40">•</span>
               <TailwindLogo />
             </div>
           </footer>
