@@ -14,7 +14,6 @@ import {
   Database,
   Copy,
   Check,
-  Sparkles,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -42,10 +41,10 @@ interface SubSectionTask {
   draft_prose?: string;
 }
 
-// ── SVG Brand Tech Logos ──────────────────────────────────────────────────────
+// ── SVG Brand Tech Logos (clean, standalone) ──────────────────────────────────
 function LangGraphLogo() {
   return (
-    <svg className="w-4 h-4 inline-block align-text-bottom text-[#10B981]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <svg className="w-5 h-5 inline-block align-middle text-[#10B981]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
     </svg>
   );
@@ -53,7 +52,7 @@ function LangGraphLogo() {
 
 function OpenAILogo() {
   return (
-    <svg className="w-4 h-4 inline-block align-text-bottom fill-current text-slate-800" viewBox="0 0 24 24">
+    <svg className="w-5 h-5 inline-block align-middle fill-current text-slate-800" viewBox="0 0 24 24">
       <path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.535-3.0137l.142.0852 4.783 2.7582a.771.771 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.504 4.504 0 0 1 2.3408 7.8956zm16.0993 3.8558L12.6007 8.3829l2.02-1.1638a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.3953-.6859zm2.0107-3.0231l-.1419-.0852-4.7735-2.7582a.7758.7758 0 0 0-.7854 0L8.9072 9.2535V6.9211a.0757.0757 0 0 1 .0332-.0615l4.8303-2.7866a4.5016 4.5016 0 0 1 6.6802 4.66zM8.3061 12.863l-2.02-1.1638a.0804.0804 0 0 1-.038-.052V6.0646a4.5016 4.5016 0 0 1 7.3757-3.4537l-.1419.0804L8.7036 5.4495a.7948.7948 0 0 0-.3927.6813zm1.0936-2.3655l2.6005-1.5 2.6005 1.5v3.0001l-2.6005 1.5-2.6005-1.5z"/>
     </svg>
   );
@@ -61,7 +60,7 @@ function OpenAILogo() {
 
 function RedisLogo() {
   return (
-    <svg className="w-4 h-4 inline-block align-text-bottom" viewBox="0 0 24 24" fill="none">
+    <svg className="w-5 h-5 inline-block align-middle" viewBox="0 0 24 24" fill="none">
       <path d="M2 17.5L12 22L22 17.5M2 12.5L12 17L22 12.5M12 2L2 6.5L12 11L22 6.5L12 2Z" stroke="#D82C20" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
@@ -69,7 +68,7 @@ function RedisLogo() {
 
 function PythonLogo() {
   return (
-    <svg className="w-4 h-4 inline-block align-text-bottom" viewBox="0 0 24 24">
+    <svg className="w-5 h-5 inline-block align-middle" viewBox="0 0 24 24">
       <path fill="#3776AB" d="M11.88 2C6.9 2 7.23 4.16 7.23 4.16V6.4H12V7.15H5.06S2 6.8 2 11.78c0 4.97 2.67 4.8 2.67 4.8h1.6v-2.28s-.09-2.72 2.67-2.72h4.54s2.58.04 2.58-2.5V4.66S16.5 2 11.88 2zm-1.42 1.48a.95.95 0 1 1 0 1.9.95.95 0 0 1 0-1.9z"/>
       <path fill="#FFD43B" d="M12.12 22c4.98 0 4.65-2.16 4.65-2.16V17.6H12v-.75h6.94S22 17.2 22 12.22c0-4.97-2.67-4.8-2.67-4.8h-1.6v2.28s.09 2.72-2.67 2.72h-4.54s-2.58-.04-2.58 2.5v4.5s-.44 2.66 4.18 2.66zm1.42-1.48a.95.95 0 1 1 0-1.9.95.95 0 0 1 0 1.9z"/>
     </svg>
@@ -78,7 +77,7 @@ function PythonLogo() {
 
 function TailwindLogo() {
   return (
-    <svg className="w-4 h-4 inline-block align-text-bottom" viewBox="0 0 24 24">
+    <svg className="w-5 h-5 inline-block align-middle" viewBox="0 0 24 24">
       <path fill="#06B6D4" d="M12.001 4.8c-3.2 0-5.2 1.6-6 4.8 1.2-1.6 2.6-2.2 4.2-1.8.913.228 1.565.89 2.288 1.624C13.666 10.618 15.027 12 18.001 12c3.2 0 5.2-1.6 6-4.8-1.2 1.6-2.6 2.2-4.2 1.8-.913-.228-1.565-.89-2.288-1.624C16.337 6.182 14.976 4.8 12.001 4.8zm-6 7.2c-3.2 0-5.2 1.6-6 4.8 1.2-1.6 2.6-2.2 4.2-1.8.913.228 1.565.89 2.288 1.624C7.666 17.818 9.027 19.2 12.001 19.2c3.2 0 5.2-1.6 6-4.8-1.2 1.6-2.6 2.2-4.2 1.8-.913-.228-1.565-.89-2.288-1.624C10.337 13.382 8.976 12 6.001 12z"/>
     </svg>
   );
@@ -404,7 +403,7 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-gray-50 flex font-sans text-black">
       {/* ── LEFT SIDEBAR (ts-industries style) ───────────────────────────────── */}
       <aside className="w-64 bg-white border-r border-black/10 flex flex-col hidden md:flex">
-        {/* Brand - ts-industries (AI screenshot removed as requested) */}
+        {/* Brand - ts-industries */}
         <div className="p-6 border-b border-black/10">
           <span className="text-xl font-bold tracking-tight text-black block">
             ts-industries
@@ -839,7 +838,7 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* ── FOOTER WITH TECH STACK SVGs AND BULLETS intact ────────────────── */}
+          {/* ── FOOTER WITH ONLY RAW SVGs SEPARATED BY BULLETS (NO WORDS, NO BOX) ── */}
           <footer className="mt-auto pt-8 border-t border-black/10 text-xs text-black/60 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <span className="font-bold text-black text-sm">ts-industries</span>
@@ -847,39 +846,17 @@ export default function DashboardPage() {
               <span className="font-medium text-black/70">Scriptorium AI Book Writer Pipeline</span>
             </div>
 
-            <div className="flex flex-wrap items-center justify-center gap-2 text-black/70 font-semibold">
-              <span className="inline-flex items-center gap-1.5 bg-white border border-black/10 px-2.5 py-1 rounded-lg shadow-2xs">
-                <LangGraphLogo />
-                <span>LangGraph v0.2.73</span>
-              </span>
-
-              <span className="text-black/40 font-bold text-sm">•</span>
-
-              <span className="inline-flex items-center gap-1.5 bg-white border border-black/10 px-2.5 py-1 rounded-lg shadow-2xs">
-                <OpenAILogo />
-                <span>GPT-4o Engine</span>
-              </span>
-
-              <span className="text-black/40 font-bold text-sm">•</span>
-
-              <span className="inline-flex items-center gap-1.5 bg-white border border-black/10 px-2.5 py-1 rounded-lg shadow-2xs">
-                <RedisLogo />
-                <span>Redis Checkpoints</span>
-              </span>
-
-              <span className="text-black/40 font-bold text-sm">•</span>
-
-              <span className="inline-flex items-center gap-1.5 bg-white border border-black/10 px-2.5 py-1 rounded-lg shadow-2xs">
-                <PythonLogo />
-                <span>Python 3.11</span>
-              </span>
-
-              <span className="text-black/40 font-bold text-sm">•</span>
-
-              <span className="inline-flex items-center gap-1.5 bg-white border border-black/10 px-2.5 py-1 rounded-lg shadow-2xs">
-                <TailwindLogo />
-                <span>Tailwind CSS</span>
-              </span>
+            {/* Standalone SVGs separated by • bullets — no words, no container boxes */}
+            <div className="flex items-center justify-center gap-3 text-black/40">
+              <LangGraphLogo />
+              <span className="font-bold">•</span>
+              <OpenAILogo />
+              <span className="font-bold">•</span>
+              <RedisLogo />
+              <span className="font-bold">•</span>
+              <PythonLogo />
+              <span className="font-bold">•</span>
+              <TailwindLogo />
             </div>
           </footer>
         </div>
