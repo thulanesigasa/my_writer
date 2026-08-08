@@ -49,8 +49,7 @@ async def create_book(payload: CreateBookRequest) -> Any:
     """
     session_id = str(uuid.uuid4())
 
-    # ── Load all 8 Context Anchor markdown files concatenated from disk ──────
-    full_context = load_full_context_string()
+    story_bible_text = load_story_bible()
 
     state = initial_state(
         book_title=payload.title,
@@ -58,7 +57,7 @@ async def create_book(payload: CreateBookRequest) -> Any:
         premise=payload.premise,
         total_chapters=payload.total_chapters,
         session_id=session_id,
-        story_bible_raw=full_context,       # ← injected into ContextAnchor
+        story_bible_raw=story_bible_text,       # ← injected into ContextAnchor
     )
     state["context_anchor"].target_audience = payload.target_audience
 

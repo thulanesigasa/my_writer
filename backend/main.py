@@ -188,7 +188,7 @@ async def start_writing(payload: StartWritingRequest) -> StreamingResponse:
     events up to the first interrupt checkpoint.
     """
     session_id = payload.session_id or str(uuid.uuid4())
-    full_context = load_full_context_string()
+    story_bible_text = load_story_bible()
 
     state = initial_state(
         book_title=payload.title,
@@ -196,7 +196,7 @@ async def start_writing(payload: StartWritingRequest) -> StreamingResponse:
         premise=payload.premise,
         total_chapters=payload.total_chapters,
         session_id=session_id,
-        story_bible_raw=full_context,
+        story_bible_raw=story_bible_text,
     )
     state["context_anchor"].target_audience = payload.target_audience
 
