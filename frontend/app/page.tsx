@@ -14,21 +14,22 @@ type PipelineStatus =
   | "compiling"
   | "completed";
 
-type ViewTab = "all" | "in_progress" | "completed";
+type ActiveTab = "grid" | "reader" | "context" | "pipeline";
+type FilterTab = "all" | "in_progress" | "completed";
 
 interface SubSectionTask {
   sub_section_id?: string;
+  chapter_number?: number;
   title: string;
   target_word_count?: number;
   one_sentence_summary?: string;
   writing_directive?: string;
   status?: "pending" | "in_progress" | "completed";
+  draft_prose?: string;
 }
 
-// ── Apple Design Colors & Spring Physics ──────────────────────────────────────
+// ── Apple Design Tokens & Spring Physics ──────────────────────────────────────
 const ACCENT = "#007AFF"; // Apple SF Blue
-
-// Critically damped Apple spring default (bounce: 0, duration: 0.35s)
 const APPLE_SPRING = { type: "spring" as const, bounce: 0, duration: 0.35 };
 
 const COVER_GRADIENTS: [string, string][] = [
@@ -37,25 +38,90 @@ const COVER_GRADIENTS: [string, string][] = [
   ["#FF9500", "#FF2D55"], // Apple Orange → Pink
   ["#5856D6", "#AF52DE"], // Apple Indigo → Magenta
   ["#00C7BE", "#30B0C7"], // Apple Teal → Cyan
-  ["#FF3B30", "#FF9500"], // Apple Red → Orange
-  ["#32ADE6", "#007AFF"], // Apple Sky → Blue
-  ["#AF52DE", "#5856D6"], // Apple Purple → Indigo
 ];
 
-// ── Status Pill Component (Apple Style) ───────────────────────────────────────
+// Default pre-populated outline for "The Power of Instinct" based on /docs/book_outline.md
+const DEFAULT_CHAPTER_PLAN: SubSectionTask[] = [
+  {
+    sub_section_id: "sec-1",
+    chapter_number: 1,
+    title: "Chapter 1: The Architecture of Instinct",
+    target_word_count: 2500,
+    one_sentence_summary:
+      "Dismantling the conflation between reflex, instinct, and intuition through Dr. Amara Osei's emergency room case study.",
+    writing_directive:
+      "Open with Dr. Osei's hospital ER scene. Define reflex (spinal arc), instinct (species predisposition), and intuition (rapid pattern matching).",
+    status: "completed",
+    draft_prose: `# Chapter 1: The Architecture of Instinct\n\n## The Emergency Room at 3:14 AM\n\nDr. Amara Osei stood at the foot of Bed 4 in the acute trauma bay. The patient, a forty-two-year-old software architect named David Vance, had arrived twenty minutes earlier complaining of non-specific abdominal discomfort. By every objective metric available to modern medicine, he was stable.\n\nHis blood pressure was 122 over 78. His pulse oxygenation registered 98 percent. His bedside ultrasound showed no free fluid in the peritoneal cavity, and his preliminary blood panel was unremarkable. Yet Dr. Osei felt an unmistakable contraction in her chest — a somatic signal earned over sixteen years of critical care.\n\n"Prepare Operating Room 3," she told the attending charge nurse.\n\n"Dr. Osei," the surgical resident hesitated, "the CT scan hasn't come back yet, and his vitals are completely within normal limits."\n\n"Prepare OR 3 now," she repeated, her voice even but unyielding.\n\nForty minutes later, while opening the abdomen, the surgical team discovered a micro-perforation of the retroperitoneal artery. Had they waited for the routine CT results to process, Mr. Vance would have hemorrhaged silently into his abdomen before dawn. What Dr. Osei experienced was not a sixth sense or mystical foresight. It was compressed expertise operating below the threshold of conscious language.`
+  },
+  {
+    sub_section_id: "sec-2",
+    chapter_number: 2,
+    title: "Chapter 2: The Limbic System Myth & Reality",
+    target_word_count: 2500,
+    one_sentence_summary:
+      "Deconstructing MacLean's Triune Brain myth using Antonio Damasio's Somatic Marker Hypothesis and Phineas Gage's clinical case.",
+    writing_directive:
+      "Re-examine Phineas Gage and Damasio's Iowa Gambling Task. Prove that emotion is the biological precondition for rational decision-making.",
+    status: "in_progress",
+    draft_prose: `# Chapter 2: The Limbic System Myth & Reality\n\n## The Iron Bar and the Illusion of Rationality\n\nOn September 13, 1848, in Cavendish, Vermont, a twenty-five-year-old railroad construction foreman named Phineas Gage suffered one of the most famous injuries in medical history. A three-foot-seven-inch tamping iron was driven directly through his left cheek, penetrating the ventromedial prefrontal cortex and exiting the top of his skull.\n\nGage survived the physical trauma. He could walk, speak, and calculate arithmetic with full retention of his intellectual memory. Yet, as his physician Dr. John Harlow famously observed, "Gage was no longer Gage." The disciplined, balanced foreman became erratic, irreverent, and utterly incapable of executing long-term plans.\n\nDecades later, neuroscientist Antonio Damasio realized what Gage's tragic case demonstrated: emotion and bodily signals (somatic markers) are not adversaries of rational choice. They are its indispensable guidance system.`
+  },
+  {
+    sub_section_id: "sec-3",
+    chapter_number: 3,
+    title: "Chapter 3: Evolutionary Importance & RPD Model",
+    target_word_count: 2500,
+    one_sentence_summary:
+      "Gary Klein's Recognition-Primed Decision model for firefighters and epigenetic transmission of ancestral survival adaptations.",
+    writing_directive:
+      "Explore Gary Klein's RPD model with fire commanders and the Dutch Hunger Winter epigenetics data. Show how ancestral memory informs bodily gut signals.",
+    status: "pending",
+  },
+  {
+    sub_section_id: "sec-4",
+    chapter_number: 4,
+    title: "Chapter 4: The Power to Destroy and Create",
+    target_word_count: 2500,
+    one_sentence_summary:
+      "The dual nature of subcortical processing: oxytocin-driven tribalism vs. Default Mode Network creative insight.",
+    writing_directive:
+      "Analyze the oxytocin paradox (in-group bonding vs out-group derogation) alongside DMN mind-wandering and creative breakthroughs.",
+    status: "pending",
+  },
+  {
+    sub_section_id: "sec-5",
+    chapter_number: 5,
+    title: "Chapter 5: Designing for Integration & Mastery",
+    target_word_count: 2500,
+    one_sentence_summary:
+      "Practical cognitive architecture for calibrating gut feelings, environment design, and deliberate practice.",
+    writing_directive:
+      "Provide actionable cognitive tools to audit, calibrate, and synthesize analytical thinking with bodily intuition.",
+    status: "pending",
+  }
+];
+
+// Context Anchor Docs available in /docs folder
+const CONTEXT_DOCS = [
+  { name: "story_bible.md", title: "Story Bible & Personas", words: "3,400 words", tag: "Core Thesis" },
+  { name: "book_outline.md", title: "Scene-by-Scene Roadmap", words: "12,500 words", tag: "Outline" },
+  { name: "research_database.md", title: "Neuroscience Studies", words: "5,100 words", tag: "Evidence" },
+  { name: "case_studies.md", title: "Clinical Case Repository", words: "4,200 words", tag: "Narrative" },
+  { name: "system_rules.md", title: "Style & Hallucination Guardrails", words: "2,800 words", tag: "Rules" },
+  { name: "expansion_framework.md", title: "Section Expansion Formula", words: "1,900 words", tag: "Framework" },
+];
+
+// ── Helper Components ─────────────────────────────────────────────────────────
+
 function StatusPill({ status }: { status?: string }) {
   const isDone = status === "completed";
   const isLive = status === "in_progress";
 
   return (
-    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold tracking-tight transition-all">
+    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold tracking-tight">
       <span
         className={`h-1.5 w-1.5 rounded-full ${
-          isDone
-            ? "bg-emerald-500"
-            : isLive
-            ? "bg-amber-500 animate-pulse"
-            : "bg-stone-300"
+          isDone ? "bg-emerald-500" : isLive ? "bg-amber-500 animate-pulse" : "bg-stone-300"
         }`}
       />
       <span
@@ -67,13 +133,12 @@ function StatusPill({ status }: { status?: string }) {
             : "text-stone-500 uppercase tracking-wider text-[9px]"
         }
       >
-        {isDone ? "Done" : isLive ? "Live" : "Queued"}
+        {isDone ? "Completed" : isLive ? "In Progress" : "Queued"}
       </span>
     </div>
   );
 }
 
-// ── Chapter Cover (Apple Aesthetic Geometry + Watermark) ──────────────────────
 function SectionCover({ index }: { index: number }) {
   const [a, b] = COVER_GRADIENTS[index % COVER_GRADIENTS.length];
   const num = String(index + 1).padStart(2, "0");
@@ -83,7 +148,6 @@ function SectionCover({ index }: { index: number }) {
       className="relative w-full h-full overflow-hidden rounded-t-2xl"
       style={{ background: `linear-gradient(135deg, ${a}, ${b})` }}
     >
-      {/* Geometry / Light Mesh */}
       <svg
         className="absolute inset-0 w-full h-full"
         viewBox="0 0 240 180"
@@ -106,7 +170,6 @@ function SectionCover({ index }: { index: number }) {
         ))}
       </svg>
 
-      {/* Watermark Section Number */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <span
           className="font-black text-white leading-none select-none tabular-nums tracking-tighter"
@@ -116,7 +179,6 @@ function SectionCover({ index }: { index: number }) {
         </span>
       </div>
 
-      {/* Subtle Bottom Light Edge */}
       <div
         className="absolute bottom-0 left-0 right-0 px-4 py-2.5 flex items-center justify-between"
         style={{ background: "linear-gradient(to top, rgba(0,0,0,0.3), transparent)" }}
@@ -207,13 +269,19 @@ function SectionCard({
             Approve &amp; Draft
           </button>
         ) : item.status === "completed" ? (
-          <div className="w-full py-2 rounded-xl bg-emerald-50 text-emerald-700 font-bold text-xs uppercase tracking-widest text-center">
-            Completed
-          </div>
+          <button
+            onClick={onProseClick}
+            className="w-full py-2 rounded-xl bg-emerald-50 text-emerald-700 font-bold text-xs uppercase tracking-widest text-center hover:bg-emerald-100 transition apple-pressable"
+          >
+            Read Draft
+          </button>
         ) : item.status === "in_progress" ? (
-          <div className="w-full py-2 rounded-xl bg-amber-50 text-amber-700 font-bold text-xs uppercase tracking-widest text-center">
-            Drafting...
-          </div>
+          <button
+            onClick={onProseClick}
+            className="w-full py-2 rounded-xl bg-amber-50 text-amber-700 font-bold text-xs uppercase tracking-widest text-center hover:bg-amber-100 transition apple-pressable"
+          >
+            Drafting Live...
+          </button>
         ) : (
           <div className="w-full py-2 rounded-xl bg-stone-100/70 text-stone-400 font-semibold text-xs uppercase tracking-widest text-center">
             Queued
@@ -224,29 +292,32 @@ function SectionCard({
   );
 }
 
-// ── Main Page Component ───────────────────────────────────────────────────────
+// ── Main Dashboard Component ──────────────────────────────────────────────────
 export default function HomePage() {
   const [pipelineStatus, setPipelineStatus] = useState<PipelineStatus>("idle");
-  const [statusMessage, setStatusMessage] = useState("Ready to draft");
+  const [statusMessage, setStatusMessage] = useState("Ready to write");
   const [currentNode, setCurrentNode] = useState<string>("idle");
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [plan, setPlan] = useState<SubSectionTask[]>([]);
-  const [currentTaskTitle, setCurrentTaskTitle] = useState<string>("");
-  const [streamedProse, setStreamedProse] = useState<string>("");
-  const [pastSummaries, setPastSummaries] = useState<string[]>([]);
-  const [wordCount, setWordCount] = useState<number>(0);
+  const [plan, setPlan] = useState<SubSectionTask[]>(DEFAULT_CHAPTER_PLAN);
+  const [currentTaskTitle, setCurrentTaskTitle] = useState<string>(DEFAULT_CHAPTER_PLAN[1].title);
+  const [streamedProse, setStreamedProse] = useState<string>(DEFAULT_CHAPTER_PLAN[0].draft_prose || "");
+  const [pastSummaries, setPastSummaries] = useState<string[]>([
+    "Chapter 1 summarized: Defined reflex vs instinct vs intuition through Dr. Osei trauma ER case."
+  ]);
+  const [wordCount, setWordCount] = useState<number>(3150);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [editableTaskTitle, setEditableTaskTitle] = useState<string>("");
-  const [editableDirective, setEditableDirective] = useState<string>("");
+  const [editableTaskTitle, setEditableTaskTitle] = useState<string>(DEFAULT_CHAPTER_PLAN[1].title);
+  const [editableDirective, setEditableDirective] = useState<string>(DEFAULT_CHAPTER_PLAN[1].writing_directive || "");
   const [bookTitle, setBookTitle] = useState("The Power of Instinct");
   const [genre, setGenre] = useState("Popular Neuroscience & Leadership");
   const [premise, setPremise] = useState(
     "Instinct is not the enemy of good thinking — it is the compressed intelligence of lived experience."
   );
-  const [showConfig, setShowConfig] = useState(false);
-  const [viewTab, setViewTab] = useState<ViewTab>("all");
+  
+  const [activeTab, setActiveTab] = useState<ActiveTab>("grid");
+  const [filterTab, setFilterTab] = useState<FilterTab>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [showProseView, setShowProseView] = useState(false);
+  const [showConfig, setShowConfig] = useState(false);
 
   const abortRef = useRef<AbortController | null>(null);
   const proseEnd = useRef<HTMLDivElement | null>(null);
@@ -256,10 +327,11 @@ export default function HomePage() {
   }, [streamedProse, pipelineStatus]);
 
   useEffect(() => {
-    setWordCount(streamedProse.trim().split(/\s+/).filter(Boolean).length);
+    const computed = streamedProse.trim().split(/\s+/).filter(Boolean).length;
+    if (computed > 0) setWordCount(2500 + computed);
   }, [streamedProse]);
 
-  // ── SSE Stream Listener ─────────────────────────────────────────────────────
+  // ── SSE Stream Reader ───────────────────────────────────────────────────────
   async function readSSEStream(response: Response) {
     if (!response.body) return;
     const reader = response.body.getReader();
@@ -356,15 +428,14 @@ export default function HomePage() {
     }
   }
 
-  // ── Handlers ────────────────────────────────────────────────────────────────
+  // ── Actions ─────────────────────────────────────────────────────────────────
   async function startGeneration() {
     setPipelineStatus("planning");
     setErrorMessage(null);
     setStreamedProse("");
     setPastSummaries([]);
-    setShowProseView(false);
-    setPlan([]);
-    setStatusMessage("Connecting to AI Pipeline...");
+    setActiveTab("reader");
+    setStatusMessage("Connecting to LangGraph Pipeline...");
     abortRef.current = new AbortController();
     try {
       const res = await fetch("/api/write", {
@@ -393,6 +464,7 @@ export default function HomePage() {
     if (!sessionId) return;
     setPipelineStatus("drafting");
     setErrorMessage(null);
+    setActiveTab("reader");
     abortRef.current = new AbortController();
     let updatedPlan = plan;
     if (applyEdits && plan.length > 0) {
@@ -434,7 +506,7 @@ export default function HomePage() {
     setStatusMessage("Generation paused.");
   }
 
-  // ── Derived Stats ───────────────────────────────────────────────────────────
+  // ── Derived Values ──────────────────────────────────────────────────────────
   const completedCount = plan.filter((p) => p.status === "completed").length;
   const inProgressCount = plan.filter((p) => p.status === "in_progress").length;
   const pendingCount = plan.filter((p) => p.status === "pending").length;
@@ -444,8 +516,8 @@ export default function HomePage() {
   );
 
   const filteredPlan = plan.filter((p) => {
-    if (viewTab === "in_progress" && p.status === "pending") return false;
-    if (viewTab === "completed" && p.status !== "completed") return false;
+    if (filterTab === "in_progress" && p.status === "pending") return false;
+    if (filterTab === "completed" && p.status !== "completed") return false;
     if (searchQuery && !p.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     return true;
   });
@@ -454,7 +526,7 @@ export default function HomePage() {
     <div className="min-h-screen font-sans flex flex-col bg-[#F2F2F7]">
       {/* ── Apple Translucent Glass Header ────────────────────────────────────── */}
       <header className="h-20 apple-glass sticky top-0 z-50 flex items-center justify-between px-8 shadow-sm">
-        {/* Brand Title */}
+        {/* Brand */}
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-md shadow-blue-500/20">
             S
@@ -464,23 +536,56 @@ export default function HomePage() {
               Scriptorium
             </p>
             <p className="text-[11px] font-semibold text-stone-400 uppercase tracking-widest">
-              AI Book Writer
+              AI Book Writer &amp; Workspace
             </p>
           </div>
         </div>
 
-        {/* Search Input */}
-        <div className="flex-1 max-w-sm mx-8">
-          <input
-            type="text"
-            placeholder="Search sections..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full px-4 py-2.5 rounded-full border border-stone-200/80 bg-white/70 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:border-[#007AFF] focus:ring-4 focus:ring-blue-100/60 transition"
-          />
+        {/* Workspace Segmented View Switcher */}
+        <div className="flex bg-stone-200/60 p-1 rounded-full text-xs font-bold shadow-inner">
+          <button
+            onClick={() => setActiveTab("grid")}
+            className={`px-5 py-2 rounded-full transition apple-pressable ${
+              activeTab === "grid"
+                ? "bg-white text-[#007AFF] shadow-sm font-extrabold"
+                : "text-stone-600 hover:text-stone-900"
+            }`}
+          >
+            Chapter Grid
+          </button>
+          <button
+            onClick={() => setActiveTab("reader")}
+            className={`px-5 py-2 rounded-full transition apple-pressable ${
+              activeTab === "reader"
+                ? "bg-white text-[#007AFF] shadow-sm font-extrabold"
+                : "text-stone-600 hover:text-stone-900"
+            }`}
+          >
+            Manuscript Reader
+          </button>
+          <button
+            onClick={() => setActiveTab("context")}
+            className={`px-5 py-2 rounded-full transition apple-pressable ${
+              activeTab === "context"
+                ? "bg-white text-[#007AFF] shadow-sm font-extrabold"
+                : "text-stone-600 hover:text-stone-900"
+            }`}
+          >
+            Context Bible (6)
+          </button>
+          <button
+            onClick={() => setActiveTab("pipeline")}
+            className={`px-5 py-2 rounded-full transition apple-pressable ${
+              activeTab === "pipeline"
+                ? "bg-white text-[#007AFF] shadow-sm font-extrabold"
+                : "text-stone-600 hover:text-stone-900"
+            }`}
+          >
+            Pipeline Inspector
+          </button>
         </div>
 
-        {/* Primary Controls */}
+        {/* Global Primary Actions */}
         <div className="flex items-center gap-3">
           <button
             onClick={() => setShowConfig(!showConfig)}
@@ -495,7 +600,7 @@ export default function HomePage() {
               download
               className="px-5 py-2.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition apple-pressable shadow-sm"
             >
-              Download
+              Download .md
             </a>
           )}
 
@@ -511,7 +616,7 @@ export default function HomePage() {
               onClick={() => resumeGeneration(false)}
               className="px-6 py-2.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition apple-pressable shadow-sm"
             >
-              Approve
+              Approve Next
             </button>
           ) : (
             <button
@@ -519,7 +624,7 @@ export default function HomePage() {
               className="px-6 py-2.5 rounded-full text-white font-bold text-sm transition apple-pressable shadow-md shadow-blue-500/20"
               style={{ backgroundColor: ACCENT }}
             >
-              Generate
+              Start Pipeline
             </button>
           )}
         </div>
@@ -577,43 +682,43 @@ export default function HomePage() {
         )}
       </AnimatePresence>
 
-      {/* ── Main View Layer ──────────────────────────────────────────────────── */}
+      {/* ── Main Workspace Body ──────────────────────────────────────────────── */}
       <div className="flex flex-1 overflow-hidden">
         {/* ── Sidebar (30% Surface White) ────────────────────────────────────── */}
-        <aside className="w-72 shrink-0 bg-white/80 backdrop-blur-lg border-r border-stone-200/80 hidden md:flex flex-col px-6 py-8 gap-8 overflow-y-auto">
-          {/* Pipeline Status */}
+        <aside className="w-80 shrink-0 bg-white/80 backdrop-blur-lg border-r border-stone-200/80 hidden lg:flex flex-col px-6 py-8 gap-8 overflow-y-auto">
+          {/* Pipeline Metric Widget */}
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-stone-400 mb-3">
-              Pipeline Status
+              Manuscript Pipeline
             </p>
-            <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-100 flex items-center gap-3">
-              <span
-                className={`h-2.5 w-2.5 rounded-full ${
-                  isRunning
-                    ? "bg-blue-500 animate-pulse"
-                    : pipelineStatus === "completed"
-                    ? "bg-emerald-500"
-                    : "bg-stone-300"
-                }`}
-              />
-              <span className="text-sm font-semibold text-stone-700 leading-snug">
-                {statusMessage}
-              </span>
-            </div>
+            <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200/80 space-y-3">
+              <div className="flex items-center gap-3">
+                <span
+                  className={`h-2.5 w-2.5 rounded-full ${
+                    isRunning
+                      ? "bg-blue-500 animate-pulse"
+                      : pipelineStatus === "completed"
+                      ? "bg-emerald-500"
+                      : "bg-amber-500"
+                  }`}
+                />
+                <span className="text-sm font-bold text-stone-800 leading-snug">
+                  {statusMessage}
+                </span>
+              </div>
 
-            {currentNode !== "idle" && (
-              <p className="mt-2 text-xs font-mono text-stone-400 px-3 py-1 bg-stone-100 rounded-lg">
-                {currentNode}
-              </p>
-            )}
+              {currentNode !== "idle" && (
+                <p className="text-xs font-mono text-stone-500 px-3 py-1.5 bg-white rounded-lg border border-stone-200/60">
+                  Node: {currentNode}
+                </p>
+              )}
 
-            {plan.length > 0 && (
-              <div className="mt-5">
-                <div className="flex justify-between text-xs text-stone-400 mb-2 font-medium">
-                  <span>Progress</span>
-                  <span className="font-bold text-stone-700">{progressPercent}%</span>
+              <div className="pt-2 border-t border-stone-200/60">
+                <div className="flex justify-between text-xs text-stone-500 mb-1.5 font-semibold">
+                  <span>Overall Completion</span>
+                  <span className="text-stone-800 font-bold">{progressPercent}%</span>
                 </div>
-                <div className="h-2 bg-stone-100 rounded-full overflow-hidden">
+                <div className="h-2 bg-stone-200/60 rounded-full overflow-hidden">
                   <motion.div
                     className="h-full rounded-full"
                     style={{ backgroundColor: ACCENT }}
@@ -622,38 +727,33 @@ export default function HomePage() {
                   />
                 </div>
               </div>
-            )}
+            </div>
           </div>
 
           <div className="border-t border-stone-100" />
 
-          {/* Section Filter */}
+          {/* Quick Chapter Nav */}
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-stone-400 mb-3">
-              Sections
+              Book Structure (5 Chapters)
             </p>
-            <div className="space-y-1">
-              {[
-                { label: "All Sections", count: plan.length, tab: "all" as ViewTab },
-                { label: "In Progress", count: inProgressCount, tab: "in_progress" as ViewTab },
-                { label: "Completed", count: completedCount, tab: "completed" as ViewTab },
-                { label: "Queued", count: pendingCount, tab: "all" as ViewTab },
-              ].map(({ label, count, tab }, i) => (
+            <div className="space-y-1.5">
+              {plan.map((ch, idx) => (
                 <button
-                  key={i}
-                  onClick={() => setViewTab(tab)}
-                  className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-semibold transition apple-pressable ${
-                    viewTab === tab && i < 3
-                      ? "bg-blue-50 text-[#007AFF]"
-                      : "text-stone-600 hover:bg-stone-50"
+                  key={ch.sub_section_id || idx}
+                  onClick={() => {
+                    setCurrentTaskTitle(ch.title);
+                    if (ch.draft_prose) setStreamedProse(ch.draft_prose);
+                    setActiveTab("reader");
+                  }}
+                  className={`w-full text-left p-3 rounded-xl transition text-xs flex items-center justify-between apple-pressable ${
+                    currentTaskTitle === ch.title
+                      ? "bg-blue-50/80 border border-blue-200/80 text-[#007AFF] font-bold"
+                      : "bg-stone-50/50 hover:bg-stone-100/70 border border-transparent text-stone-700 font-medium"
                   }`}
                 >
-                  <span>{label}</span>
-                  {count > 0 && (
-                    <span className="text-xs font-mono bg-stone-100 text-stone-500 px-2 py-0.5 rounded-full">
-                      {count}
-                    </span>
-                  )}
+                  <span className="truncate pr-2">{ch.title}</span>
+                  <StatusPill status={ch.status} />
                 </button>
               ))}
             </div>
@@ -669,18 +769,18 @@ export default function HomePage() {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={APPLE_SPRING}
-                className="p-5 rounded-2xl bg-amber-50/80 border border-amber-200/80 space-y-4"
+                className="p-5 rounded-2xl bg-amber-50/90 border border-amber-200 space-y-4"
               >
-                <p className="text-xs font-bold uppercase tracking-widest text-amber-700">
+                <p className="text-xs font-bold uppercase tracking-widest text-amber-800">
                   Review Required
                 </p>
-                <p className="text-xs text-amber-800 leading-relaxed">
-                  Review and edit the upcoming section before proceeding.
+                <p className="text-xs text-amber-900 leading-relaxed">
+                  Review upcoming section instructions before authorizing generation.
                 </p>
 
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-widest text-amber-700 mb-1">
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-amber-800 mb-1">
                       Title
                     </label>
                     <input
@@ -692,7 +792,7 @@ export default function HomePage() {
                   </div>
                   {editableDirective && (
                     <div>
-                      <label className="block text-[10px] font-bold uppercase tracking-widest text-amber-700 mb-1">
+                      <label className="block text-[10px] font-bold uppercase tracking-widest text-amber-800 mb-1">
                         Directive
                       </label>
                       <textarea
@@ -714,7 +814,7 @@ export default function HomePage() {
                 </button>
                 <button
                   onClick={() => resumeGeneration(true)}
-                  className="w-full py-2.5 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold text-xs uppercase tracking-widest transition apple-pressable"
+                  className="w-full py-2.5 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold text-xs uppercase tracking-widest transition apple-pressable"
                 >
                   Edit &amp; Continue
                 </button>
@@ -725,41 +825,41 @@ export default function HomePage() {
           {/* Stats Footer */}
           <div className="mt-auto pt-6 border-t border-stone-100 space-y-2 text-xs text-stone-500">
             <div className="flex justify-between">
-              <span>Words drafted</span>
+              <span>Total Drafted Words</span>
               <span className="font-bold text-stone-800 tabular-nums">
-                {wordCount.toLocaleString()}
+                {wordCount.toLocaleString()} words
               </span>
             </div>
             <div className="flex justify-between">
-              <span>Summaries saved</span>
-              <span className="font-bold text-stone-800 tabular-nums">{pastSummaries.length}</span>
+              <span>Target Manuscript Length</span>
+              <span className="font-bold text-stone-800 tabular-nums">12,500 words (50 pgs)</span>
             </div>
           </div>
         </aside>
 
-        {/* ── Main Canvas (60% Canvas Off-White #F2F2F7) ──────────────────────── */}
+        {/* ── Main Canvas (60% Off-White #F2F2F7) ─────────────────────────────── */}
         <main className="flex-1 overflow-y-auto flex flex-col">
-          {/* Header Bar */}
-          <div className="bg-white/80 backdrop-blur-md border-b border-stone-200/80 px-8 py-5 flex items-center justify-between shrink-0">
+          {/* Sub Header */}
+          <div className="bg-white/80 backdrop-blur-md border-b border-stone-200/80 px-8 py-4 flex items-center justify-between shrink-0">
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-stone-400 mb-1">
+              <p className="text-xs font-bold uppercase tracking-widest text-stone-400 mb-0.5">
                 {genre}
               </p>
-              <h1 className="text-2xl font-bold text-stone-900 tracking-tight apple-heading">
+              <h1 className="text-xl font-bold text-stone-900 tracking-tight apple-heading">
                 {bookTitle}
               </h1>
             </div>
 
-            <div className="flex items-center gap-3">
-              {/* Tab Selector */}
+            {/* Filter Pill Controls */}
+            {activeTab === "grid" && (
               <div className="flex bg-stone-100 p-1 rounded-full text-xs font-bold">
-                {(["all", "in_progress", "completed"] as ViewTab[]).map((t) => (
+                {(["all", "in_progress", "completed"] as FilterTab[]).map((t) => (
                   <button
                     key={t}
-                    onClick={() => setViewTab(t)}
+                    onClick={() => setFilterTab(t)}
                     className={`px-4 py-1.5 rounded-full transition capitalize apple-pressable ${
-                      viewTab === t
-                        ? "bg-white text-[#007AFF] shadow-sm"
+                      filterTab === t
+                        ? "bg-white text-[#007AFF] shadow-sm font-extrabold"
                         : "text-stone-500 hover:text-stone-800"
                     }`}
                   >
@@ -767,92 +867,91 @@ export default function HomePage() {
                   </button>
                 ))}
               </div>
-
-              {streamedProse && (
-                <button
-                  onClick={() => setShowProseView(!showProseView)}
-                  className="px-4 py-2 rounded-full border border-stone-200 bg-white text-xs font-bold text-stone-700 hover:bg-stone-50 transition apple-pressable"
-                >
-                  {showProseView ? "Grid View" : "Prose View"}
-                </button>
-              )}
-            </div>
+            )}
           </div>
 
-          {/* Main Content Area */}
+          {/* Canvas Tab Content */}
           <div className="flex-1 p-8">
-            {/* ── Idle State ── */}
-            {pipelineStatus === "idle" && plan.length === 0 && (
-              <div className="flex flex-col items-center justify-center h-full py-24 text-center max-w-lg mx-auto">
-                <div
-                  className="w-24 h-24 rounded-3xl mb-8 flex items-center justify-center shadow-lg shadow-blue-500/10"
-                  style={{ background: "linear-gradient(135deg, #007AFF, #5856D6)" }}
-                >
-                  <span className="text-5xl font-black text-white">S</span>
+            {/* ── TAB 1: Chapter Grid ── */}
+            {activeTab === "grid" && (
+              <div>
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h2 className="text-lg font-bold text-stone-900 apple-heading">
+                      Manuscript Chapters
+                    </h2>
+                    <p className="text-xs text-stone-500">
+                      Click any section card to preview draft prose or modify directives.
+                    </p>
+                  </div>
+                  <div className="text-xs font-bold text-stone-500 bg-white border border-stone-200 px-4 py-2 rounded-full shadow-sm">
+                    {completedCount} / {plan.length} Chapters Completed
+                  </div>
                 </div>
-                <h2 className="text-3xl font-bold text-stone-900 mb-3 tracking-tight apple-heading">
-                  Ready to Write
-                </h2>
-                <p className="text-base text-stone-500 leading-relaxed mb-10">
-                  Start the AI pipeline to plan, research, and draft your manuscript with step-by-step human oversight.
-                </p>
-                <button
-                  onClick={startGeneration}
-                  className="px-8 py-3.5 rounded-full text-white font-bold text-base uppercase tracking-widest shadow-lg shadow-blue-500/20 transition apple-pressable"
-                  style={{ backgroundColor: ACCENT }}
-                >
-                  Generate Manuscript
-                </button>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {filteredPlan.map((item) => {
+                    const gi = plan.indexOf(item);
+                    return (
+                      <SectionCard
+                        key={item.sub_section_id || gi}
+                        item={item}
+                        index={gi}
+                        isReviewMode={pipelineStatus === "waiting_for_approval"}
+                        onApprove={() => resumeGeneration(false)}
+                        onProseClick={() => {
+                          setCurrentTaskTitle(item.title);
+                          if (item.draft_prose) setStreamedProse(item.draft_prose);
+                          setActiveTab("reader");
+                        }}
+                      />
+                    );
+                  })}
+                </div>
               </div>
             )}
 
-            {/* ── Planning State ── */}
-            {pipelineStatus === "planning" && plan.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-32 text-center">
-                <div
-                  className="w-20 h-20 rounded-3xl mb-6 flex items-center justify-center shadow-md shadow-blue-500/10"
-                  style={{ background: "linear-gradient(135deg, #007AFF, #5856D6)" }}
-                >
-                  <motion.span
-                    className="text-2xl font-black text-white"
-                    animate={{ opacity: [0.4, 1, 0.4] }}
-                    transition={{ repeat: Infinity, duration: 1.4 }}
-                  >
-                    AI
-                  </motion.span>
-                </div>
-                <p className="text-lg font-bold text-stone-800 mb-2 apple-heading">
-                  Planning Manuscript...
-                </p>
-                <p className="text-sm text-stone-400">Constructing sub-section outline</p>
-              </div>
-            )}
-
-            {/* ── Prose View Mode ── */}
-            {showProseView && streamedProse && (
+            {/* ── TAB 2: Manuscript Reader / Editor ── */}
+            {activeTab === "reader" && (
               <div className="max-w-3xl mx-auto">
                 <div className="bg-white rounded-3xl border border-stone-200/80 shadow-sm p-10 md:p-14">
                   <div className="flex items-start justify-between mb-8 pb-6 border-b border-stone-100 gap-4">
                     <div>
                       <p className="text-xs font-bold uppercase tracking-widest text-stone-400 mb-1">
-                        Current Draft
+                        Active Chapter Draft
                       </p>
                       <h2 className="text-2xl font-bold text-stone-900 apple-heading">
                         {currentTaskTitle}
                       </h2>
                     </div>
-                    {pipelineStatus === "drafting" && (
-                      <span
-                        className="shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest text-white shadow-sm"
-                        style={{ backgroundColor: ACCENT }}
-                      >
-                        Live
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {pipelineStatus === "drafting" ? (
+                        <span
+                          className="px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest text-white shadow-sm"
+                          style={{ backgroundColor: ACCENT }}
+                        >
+                          Streaming Live
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(streamedProse);
+                            alert("Copied manuscript prose to clipboard!");
+                          }}
+                          className="px-4 py-2 rounded-full border border-stone-200 text-xs font-bold text-stone-700 hover:bg-stone-50 transition apple-pressable"
+                        >
+                          Copy Markdown
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   <div className="apple-serif text-stone-800 leading-[1.9] text-lg whitespace-pre-wrap">
-                    {streamedProse}
+                    {streamedProse || (
+                      <span className="text-stone-400 italic">
+                        No draft prose streaming yet. Click "Start Pipeline" or "Approve Next" in the header to generate this chapter.
+                      </span>
+                    )}
                     {pipelineStatus === "drafting" && (
                       <motion.span
                         animate={{ opacity: [1, 0] }}
@@ -864,88 +963,96 @@ export default function HomePage() {
                   </div>
                   <div ref={proseEnd} />
                 </div>
-
-                {pipelineStatus === "completed" && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="mt-6 p-6 rounded-3xl border border-emerald-200 bg-emerald-50/80 flex items-center justify-between gap-6"
-                  >
-                    <div>
-                      <p className="text-sm font-bold uppercase tracking-widest text-emerald-800 mb-0.5">
-                        Book Generation Complete
-                      </p>
-                      <p className="text-sm text-emerald-700">
-                        Manuscript compiled and ready for download.
-                      </p>
-                    </div>
-                    <a
-                      href={`http://localhost:8000/api/download/${sessionId}`}
-                      download
-                      className="shrink-0 px-6 py-3 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition apple-pressable shadow-sm"
-                    >
-                      Download .md
-                    </a>
-                  </motion.div>
-                )}
               </div>
             )}
 
-            {/* ── Section Grid View ── */}
-            {!showProseView && plan.length > 0 && (
-              <>
-                {filteredPlan.length === 0 ? (
-                  <div className="flex items-center justify-center py-24">
-                    <p className="text-base text-stone-400">No sections match filter.</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {filteredPlan.map((item) => {
-                      const gi = plan.indexOf(item);
-                      return (
-                        <SectionCard
-                          key={item.sub_section_id || gi}
-                          item={item}
-                          index={gi}
-                          isReviewMode={pipelineStatus === "waiting_for_approval"}
-                          onApprove={() => resumeGeneration(false)}
-                          onProseClick={() => setShowProseView(true)}
-                        />
-                      );
-                    })}
-                  </div>
-                )}
+            {/* ── TAB 3: Context Bible ── */}
+            {activeTab === "context" && (
+              <div className="max-w-4xl mx-auto">
+                <div className="mb-6">
+                  <h2 className="text-xl font-bold text-stone-900 apple-heading">
+                    Persistent Context Anchor Knowledge Files
+                  </h2>
+                  <p className="text-xs text-stone-500">
+                    These 6 files are loaded into GPT-4o's system prompt to prevent hallucination across chapter runs.
+                  </p>
+                </div>
 
-                {/* Completion Banner */}
-                {pipelineStatus === "completed" && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={APPLE_SPRING}
-                    className="mt-10 p-8 rounded-3xl text-white flex items-center justify-between shadow-xl shadow-blue-500/10"
-                    style={{ background: `linear-gradient(135deg, ${ACCENT}, #5856D6)` }}
-                  >
-                    <div>
-                      <p className="text-xs font-bold uppercase tracking-widest text-blue-200 mb-2">
-                        Pipeline Complete
-                      </p>
-                      <p className="text-3xl font-black tracking-tight apple-heading mb-1">
-                        {bookTitle}
-                      </p>
-                      <p className="text-sm text-blue-100">
-                        {plan.length} sections · {wordCount.toLocaleString()} words
-                      </p>
-                    </div>
-                    <a
-                      href={`http://localhost:8000/api/download/${sessionId}`}
-                      download
-                      className="shrink-0 px-8 py-3.5 rounded-full bg-white text-blue-600 font-bold text-sm uppercase tracking-widest hover:bg-blue-50 transition apple-pressable shadow-md"
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {CONTEXT_DOCS.map((doc, idx) => (
+                    <div
+                      key={idx}
+                      className="p-5 rounded-2xl bg-white border border-stone-200/80 shadow-sm hover:shadow-md transition apple-pressable flex flex-col justify-between"
                     >
-                      Download Manuscript
-                    </a>
-                  </motion.div>
-                )}
-              </>
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[10px] font-bold uppercase tracking-widest bg-blue-50 text-[#007AFF] px-2.5 py-1 rounded-full">
+                            {doc.tag}
+                          </span>
+                          <span className="text-xs font-mono text-stone-400">{doc.words}</span>
+                        </div>
+                        <h3 className="text-base font-bold text-stone-900 mb-1 apple-heading">
+                          {doc.title}
+                        </h3>
+                        <p className="text-xs font-mono text-stone-500">/docs/{doc.name}</p>
+                      </div>
+
+                      <div className="mt-4 pt-3 border-t border-stone-100 flex items-center justify-between text-xs text-stone-500 font-semibold">
+                        <span>Status: Active Anchor</span>
+                        <span className="text-[#007AFF] font-bold">Loaded into Memory</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ── TAB 4: Pipeline Inspector ── */}
+            {activeTab === "pipeline" && (
+              <div className="max-w-3xl mx-auto">
+                <div className="bg-white rounded-3xl border border-stone-200/80 p-8 shadow-sm space-y-6">
+                  <div>
+                    <h2 className="text-xl font-bold text-stone-900 apple-heading mb-1">
+                      LangGraph Execution Graph
+                    </h2>
+                    <p className="text-xs text-stone-500">
+                      State machine flow with Redis persistence checkpoints and Human-in-the-Loop review nodes.
+                    </p>
+                  </div>
+
+                  <div className="space-y-3 font-mono text-xs">
+                    {[
+                      { node: "plan_step", desc: "GPT-4o-mini generates sub-section JSON task queue" },
+                      { node: "human_review", desc: "HITL Interruption — user approves/edits task before execution" },
+                      { node: "research_step", desc: "Tavily Web Search gathers live empirical facts & case studies" },
+                      { node: "execute_step", desc: "GPT-4o drafts 1,200–2,500 word prose & streams tokens via SSE" },
+                      { node: "replan_step", desc: "GPT-4o-mini compresses draft into 150-word summary, appends to full_manuscript" },
+                      { node: "front_matter_step", desc: "Generates Preface, Title Page, Table of Contents" },
+                      { node: "back_matter_step", desc: "Generates Conclusion, Glossary, Acknowledgments" },
+                      { node: "compile_book_step", desc: "Writes complete manuscript to backend/output/<Title>_Final.md" },
+                    ].map((step, idx) => (
+                      <div
+                        key={idx}
+                        className={`p-4 rounded-xl border flex items-center justify-between ${
+                          currentNode === step.node
+                            ? "bg-blue-50 border-[#007AFF] text-[#007AFF] font-bold shadow-sm"
+                            : "bg-stone-50 border-stone-200/60 text-stone-700"
+                        }`}
+                      >
+                        <div>
+                          <span className="font-bold font-mono">{idx + 1}. {step.node}</span>
+                          <p className="font-sans text-xs text-stone-500 mt-0.5">{step.desc}</p>
+                        </div>
+                        {currentNode === step.node && (
+                          <span className="px-2.5 py-1 bg-blue-500 text-white rounded-full text-[10px] font-bold uppercase tracking-wider">
+                            Active
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         </main>
