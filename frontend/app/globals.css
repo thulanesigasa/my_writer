@@ -1,114 +1,45 @@
 @import "tailwindcss";
 
-/* ─── Apple Design System Tokens ───────────────────────────────────────────── */
 :root {
-  --font-apple: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
-  --font-serif-apple: "New York", "Georgia", "Times New Roman", serif;
-
-  /* 60-30-10 Color System (Apple Light / Neutral) */
-  --bg-main: #F2F2F7;          /* 60% System Gray 6 canvas */
-  --bg-surface: #FFFFFF;       /* 30% Pure White cards & sidebars */
-  --bg-translucent: rgba(255, 255, 255, 0.78);
-
-  /* 10% Apple Accent (SF Blue / Indigo) */
-  --accent-primary: #007AFF;
-  --accent-hover: #0062CC;
-  --accent-indigo: #5E5CE6;
-  --accent-subtle: rgba(0, 122, 255, 0.08);
-
-  /* Typography Colors */
-  --text-primary: #1C1C1E;
-  --text-secondary: #6C6C70;
-  --text-tertiary: #8E8E93;
-
-  /* Borders & Shadows */
-  --border-subtle: rgba(0, 0, 0, 0.06);
-  --border-highlight: rgba(255, 255, 255, 0.6);
-  --shadow-apple-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
-  --shadow-apple-md: 0 8px 24px -4px rgba(0, 0, 0, 0.08), 0 2px 6px -1px rgba(0, 0, 0, 0.04);
-  --shadow-apple-lg: 0 20px 40px -12px rgba(0, 0, 0, 0.12);
-}
-
-/* ─── Base Reset ───────────────────────────────────────────────────────────── */
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-html {
-  scroll-behavior: smooth;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  --font-inter: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-serif: "Georgia", "Cambria", "Times New Roman", serif;
 }
 
 body {
-  font-family: var(--font-apple);
-  background-color: var(--bg-main);
-  color: var(--text-primary);
+  font-family: var(--font-inter);
+  background-color: #f9fafb; /* bg-gray-50 */
+  color: #111827;
   min-height: 100vh;
-  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* ─── Apple Translucent Materials (Backdrop Blur) ──────────────────────────── */
-.apple-glass {
-  background: var(--bg-translucent);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.apple-glass-card {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(16px) saturate(160%);
-  -webkit-backdrop-filter: blur(16px) saturate(160%);
-  border: 1px solid var(--border-subtle);
-  box-shadow: var(--shadow-apple-sm);
-}
-
-/* ─── Tactile Feedback (:active compression) ──────────────────────────────── */
-.apple-pressable {
-  transition: transform 120ms cubic-bezier(0.25, 1, 0.5, 1), opacity 120ms ease;
-  user-select: none;
-}
-
-.apple-pressable:active {
-  transform: scale(0.97);
-  opacity: 0.88;
-}
-
-/* ─── Custom Apple Scrollbar ────────────────────────────────────────────────── */
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
 }
-
 ::-webkit-scrollbar-track {
   background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
   background: rgba(0, 0, 0, 0.15);
   border-radius: 99px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 0, 0, 0.3);
 }
 
-/* ─── Selection ────────────────────────────────────────────────────────────── */
-::selection {
-  background: rgba(0, 122, 255, 0.2);
-  color: var(--text-primary);
+.prose-reader {
+  font-family: var(--font-serif);
+  line-height: 1.85;
+  font-size: 1.05rem;
+  color: #1f2937;
 }
 
-/* ─── Typography Utils ─────────────────────────────────────────────────────── */
-.apple-heading {
-  font-family: var(--font-apple);
-  letter-spacing: -0.025em;
+.prose-reader h1, .prose-reader h2, .prose-reader h3 {
+  font-family: var(--font-inter);
   font-weight: 700;
-}
-
-.apple-serif {
-  font-family: var(--font-serif-apple);
+  color: #111827;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
 }

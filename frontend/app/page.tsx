@@ -1,7 +1,26 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import {
+  BookOpen,
+  FilePlus,
+  Settings,
+  Search,
+  FileText,
+  CheckCircle2,
+  Clock,
+  Loader2,
+  Sliders,
+  Download,
+  Play,
+  Pause,
+  Database,
+  Layers,
+  Sparkles,
+  ArrowRight,
+  Copy,
+  Check,
+} from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type PipelineStatus =
@@ -14,7 +33,7 @@ type PipelineStatus =
   | "compiling"
   | "completed";
 
-type ActiveTab = "grid" | "reader" | "context" | "pipeline";
+type ActiveTab = "notes" | "editor" | "context" | "pipeline" | "settings";
 type FilterTab = "all" | "in_progress" | "completed";
 
 interface SubSectionTask {
@@ -28,29 +47,17 @@ interface SubSectionTask {
   draft_prose?: string;
 }
 
-// ── Apple Design Tokens & Spring Physics ──────────────────────────────────────
-const ACCENT = "#007AFF"; // Apple SF Blue
-const APPLE_SPRING = { type: "spring" as const, bounce: 0, duration: 0.35 };
-
-const COVER_GRADIENTS: [string, string][] = [
-  ["#007AFF", "#5856D6"], // Apple Blue → Purple
-  ["#34C759", "#30B0C7"], // Apple Mint → Teal
-  ["#FF9500", "#FF2D55"], // Apple Orange → Pink
-  ["#5856D6", "#AF52DE"], // Apple Indigo → Magenta
-  ["#00C7BE", "#30B0C7"], // Apple Teal → Cyan
-];
-
-// Default pre-populated outline for "The Power of Instinct" based on /docs/book_outline.md
-const DEFAULT_CHAPTER_PLAN: SubSectionTask[] = [
+// ── Initial 5-Chapter Outline for "The Power of Instinct" ─────────────────────
+const INITIAL_PLAN: SubSectionTask[] = [
   {
     sub_section_id: "sec-1",
     chapter_number: 1,
     title: "Chapter 1: The Architecture of Instinct",
     target_word_count: 2500,
     one_sentence_summary:
-      "Dismantling the conflation between reflex, instinct, and intuition through Dr. Amara Osei's emergency room case study.",
+      "Dismantling the conflation between reflex, instinct, and intuition through Dr. Amara Osei's ER case study.",
     writing_directive:
-      "Open with Dr. Osei's hospital ER scene. Define reflex (spinal arc), instinct (species predisposition), and intuition (rapid pattern matching).",
+      "Open with Dr. Osei's ER scene. Define reflex (spinal arc), instinct (species predisposition), and intuition (rapid pattern matching).",
     status: "completed",
     draft_prose: `# Chapter 1: The Architecture of Instinct\n\n## The Emergency Room at 3:14 AM\n\nDr. Amara Osei stood at the foot of Bed 4 in the acute trauma bay. The patient, a forty-two-year-old software architect named David Vance, had arrived twenty minutes earlier complaining of non-specific abdominal discomfort. By every objective metric available to modern medicine, he was stable.\n\nHis blood pressure was 122 over 78. His pulse oxygenation registered 98 percent. His bedside ultrasound showed no free fluid in the peritoneal cavity, and his preliminary blood panel was unremarkable. Yet Dr. Osei felt an unmistakable contraction in her chest — a somatic signal earned over sixteen years of critical care.\n\n"Prepare Operating Room 3," she told the attending charge nurse.\n\n"Dr. Osei," the surgical resident hesitated, "the CT scan hasn't come back yet, and his vitals are completely within normal limits."\n\n"Prepare OR 3 now," she repeated, her voice even but unyielding.\n\nForty minutes later, while opening the abdomen, the surgical team discovered a micro-perforation of the retroperitoneal artery. Had they waited for the routine CT results to process, Mr. Vance would have hemorrhaged silently into his abdomen before dawn. What Dr. Osei experienced was not a sixth sense or mystical foresight. It was compressed expertise operating below the threshold of conscious language.`
   },
@@ -101,229 +108,50 @@ const DEFAULT_CHAPTER_PLAN: SubSectionTask[] = [
   }
 ];
 
-// Context Anchor Docs available in /docs folder
-const CONTEXT_DOCS = [
-  { name: "story_bible.md", title: "Story Bible & Personas", words: "3,400 words", tag: "Core Thesis" },
-  { name: "book_outline.md", title: "Scene-by-Scene Roadmap", words: "12,500 words", tag: "Outline" },
-  { name: "research_database.md", title: "Neuroscience Studies", words: "5,100 words", tag: "Evidence" },
-  { name: "case_studies.md", title: "Clinical Case Repository", words: "4,200 words", tag: "Narrative" },
-  { name: "system_rules.md", title: "Style & Hallucination Guardrails", words: "2,800 words", tag: "Rules" },
-  { name: "expansion_framework.md", title: "Section Expansion Formula", words: "1,900 words", tag: "Framework" },
+const CONTEXT_FILES = [
+  { name: "story_bible.md", label: "Story Bible & Personas", size: "14.2 KB", type: "Core Thesis" },
+  { name: "book_outline.md", label: "Scene Roadmap & Beats", size: "57.3 KB", type: "Outline" },
+  { name: "research_database.md", label: "Neuroscience Database", size: "28.4 KB", type: "Evidence" },
+  { name: "case_studies.md", label: "Clinical Case Repository", size: "32.1 KB", type: "Cases" },
+  { name: "system_rules.md", label: "Style & Safety Guardrails", size: "19.5 KB", type: "Rules" },
+  { name: "expansion_framework.md", label: "Section Expansion Formula", size: "11.8 KB", type: "Framework" },
 ];
 
-// ── Helper Components ─────────────────────────────────────────────────────────
-
-function StatusPill({ status }: { status?: string }) {
-  const isDone = status === "completed";
-  const isLive = status === "in_progress";
-
-  return (
-    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold tracking-tight">
-      <span
-        className={`h-1.5 w-1.5 rounded-full ${
-          isDone ? "bg-emerald-500" : isLive ? "bg-amber-500 animate-pulse" : "bg-stone-300"
-        }`}
-      />
-      <span
-        className={
-          isDone
-            ? "text-emerald-700 font-bold uppercase tracking-wider text-[9px]"
-            : isLive
-            ? "text-amber-700 font-bold uppercase tracking-wider text-[9px]"
-            : "text-stone-500 uppercase tracking-wider text-[9px]"
-        }
-      >
-        {isDone ? "Completed" : isLive ? "In Progress" : "Queued"}
-      </span>
-    </div>
-  );
-}
-
-function SectionCover({ index }: { index: number }) {
-  const [a, b] = COVER_GRADIENTS[index % COVER_GRADIENTS.length];
-  const num = String(index + 1).padStart(2, "0");
-
-  return (
-    <div
-      className="relative w-full h-full overflow-hidden rounded-t-2xl"
-      style={{ background: `linear-gradient(135deg, ${a}, ${b})` }}
-    >
-      <svg
-        className="absolute inset-0 w-full h-full"
-        viewBox="0 0 240 180"
-        preserveAspectRatio="xMidYMid slice"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <circle cx="210" cy="150" r="90" fill="white" opacity="0.08" />
-        <circle cx="20" cy="20" r="60" fill="white" opacity="0.05" />
-        {Array.from({ length: 7 }).map((_, i) => (
-          <line
-            key={`v${i}`}
-            x1={i * 40}
-            y1="0"
-            x2={i * 40}
-            y2="180"
-            stroke="white"
-            strokeWidth="0.5"
-            opacity="0.1"
-          />
-        ))}
-      </svg>
-
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <span
-          className="font-black text-white leading-none select-none tabular-nums tracking-tighter"
-          style={{ fontSize: "6.5rem", opacity: 0.12 }}
-        >
-          {num}
-        </span>
-      </div>
-
-      <div
-        className="absolute bottom-0 left-0 right-0 px-4 py-2.5 flex items-center justify-between"
-        style={{ background: "linear-gradient(to top, rgba(0,0,0,0.3), transparent)" }}
-      >
-        <span className="text-[10px] font-bold uppercase tracking-widest text-white/80">
-          Section {num}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-// ── Section Card Component (Apple Glass / Squircle) ───────────────────────────
-function SectionCard({
-  item,
-  index,
-  isReviewMode,
-  onApprove,
-  onProseClick,
-}: {
-  item: SubSectionTask;
-  index: number;
-  isReviewMode: boolean;
-  onApprove?: () => void;
-  onProseClick?: () => void;
-}) {
-  const wc = (item.target_word_count ?? 1200).toLocaleString();
-  const isActive = isReviewMode && item.status === "in_progress";
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95, y: 8 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      transition={{ ...APPLE_SPRING, delay: index * 0.03 }}
-      className={`bg-white rounded-2xl border flex flex-col overflow-hidden transition-all duration-200 apple-pressable ${
-        isActive
-          ? "border-[#007AFF] ring-4 ring-blue-50 shadow-md"
-          : "border-stone-200/80 shadow-sm hover:shadow-md hover:border-stone-300"
-      }`}
-    >
-      {/* Cover Header */}
-      <div className="relative h-44 flex-shrink-0">
-        <SectionCover index={index} />
-
-        {/* Status Badge Overlay */}
-        <div className="absolute top-3.5 right-3.5 bg-white/90 backdrop-blur-md rounded-full shadow-sm">
-          <StatusPill status={item.status} />
-        </div>
-
-        {/* Prose View Shortcut */}
-        {(item.status === "completed" || item.status === "in_progress") && onProseClick && (
-          <button
-            onClick={onProseClick}
-            className="absolute bottom-3.5 right-3.5 px-3 py-1 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-md text-white text-[11px] font-bold uppercase tracking-wider transition apple-pressable"
-          >
-            View Prose
-          </button>
-        )}
-      </div>
-
-      {/* Card Content */}
-      <div className="p-5 flex flex-col flex-1 justify-between gap-3">
-        <div>
-          <h3 className="text-base font-bold text-stone-900 leading-snug line-clamp-2 mb-1.5 apple-heading">
-            {item.title}
-          </h3>
-
-          {item.one_sentence_summary && (
-            <p className="text-xs text-stone-500 leading-relaxed line-clamp-2">
-              {item.one_sentence_summary}
-            </p>
-          )}
-        </div>
-
-        {/* Word count & status label */}
-        <div className="flex items-center justify-between text-xs text-stone-400 font-medium pt-2 border-t border-stone-100">
-          <span className="capitalize text-stone-500">{item.status ?? "pending"}</span>
-          <span className="font-mono tabular-nums text-stone-600 font-semibold">{wc} words</span>
-        </div>
-
-        {/* Action Button */}
-        {isActive && onApprove ? (
-          <button
-            onClick={onApprove}
-            className="w-full py-2.5 rounded-xl text-white font-bold text-xs uppercase tracking-widest transition apple-pressable shadow-sm"
-            style={{ backgroundColor: ACCENT }}
-          >
-            Approve &amp; Draft
-          </button>
-        ) : item.status === "completed" ? (
-          <button
-            onClick={onProseClick}
-            className="w-full py-2 rounded-xl bg-emerald-50 text-emerald-700 font-bold text-xs uppercase tracking-widest text-center hover:bg-emerald-100 transition apple-pressable"
-          >
-            Read Draft
-          </button>
-        ) : item.status === "in_progress" ? (
-          <button
-            onClick={onProseClick}
-            className="w-full py-2 rounded-xl bg-amber-50 text-amber-700 font-bold text-xs uppercase tracking-widest text-center hover:bg-amber-100 transition apple-pressable"
-          >
-            Drafting Live...
-          </button>
-        ) : (
-          <div className="w-full py-2 rounded-xl bg-stone-100/70 text-stone-400 font-semibold text-xs uppercase tracking-widest text-center">
-            Queued
-          </div>
-        )}
-      </div>
-    </motion.div>
-  );
-}
-
-// ── Main Dashboard Component ──────────────────────────────────────────────────
-export default function HomePage() {
+export default function DashboardPage() {
   const [pipelineStatus, setPipelineStatus] = useState<PipelineStatus>("idle");
-  const [statusMessage, setStatusMessage] = useState("Ready to write");
+  const [statusMessage, setStatusMessage] = useState("Ready to generate");
   const [currentNode, setCurrentNode] = useState<string>("idle");
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [plan, setPlan] = useState<SubSectionTask[]>(DEFAULT_CHAPTER_PLAN);
-  const [currentTaskTitle, setCurrentTaskTitle] = useState<string>(DEFAULT_CHAPTER_PLAN[1].title);
-  const [streamedProse, setStreamedProse] = useState<string>(DEFAULT_CHAPTER_PLAN[0].draft_prose || "");
+  const [plan, setPlan] = useState<SubSectionTask[]>(INITIAL_PLAN);
+  const [activeTaskTitle, setActiveTaskTitle] = useState<string>(INITIAL_PLAN[0].title);
+  const [streamedProse, setStreamedProse] = useState<string>(INITIAL_PLAN[0].draft_prose || "");
   const [pastSummaries, setPastSummaries] = useState<string[]>([
     "Chapter 1 summarized: Defined reflex vs instinct vs intuition through Dr. Osei trauma ER case."
   ]);
   const [wordCount, setWordCount] = useState<number>(3150);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [editableTaskTitle, setEditableTaskTitle] = useState<string>(DEFAULT_CHAPTER_PLAN[1].title);
-  const [editableDirective, setEditableDirective] = useState<string>(DEFAULT_CHAPTER_PLAN[1].writing_directive || "");
+  const [copied, setCopied] = useState(false);
+
+  // Form / Edit states
+  const [editableTaskTitle, setEditableTaskTitle] = useState<string>(INITIAL_PLAN[1].title);
+  const [editableDirective, setEditableDirective] = useState<string>(INITIAL_PLAN[1].writing_directive || "");
   const [bookTitle, setBookTitle] = useState("The Power of Instinct");
   const [genre, setGenre] = useState("Popular Neuroscience & Leadership");
   const [premise, setPremise] = useState(
     "Instinct is not the enemy of good thinking — it is the compressed intelligence of lived experience."
   );
-  
-  const [activeTab, setActiveTab] = useState<ActiveTab>("grid");
+
+  const [activeTab, setActiveTab] = useState<ActiveTab>("notes");
   const [filterTab, setFilterTab] = useState<FilterTab>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [showConfig, setShowConfig] = useState(false);
 
   const abortRef = useRef<AbortController | null>(null);
-  const proseEnd = useRef<HTMLDivElement | null>(null);
+  const proseEndRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (pipelineStatus === "drafting") proseEnd.current?.scrollIntoView({ behavior: "smooth" });
+    if (pipelineStatus === "drafting") {
+      proseEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [streamedProse, pipelineStatus]);
 
   useEffect(() => {
@@ -378,7 +206,7 @@ export default function HomePage() {
             }));
             setPlan(p);
             if (p[0]) {
-              setCurrentTaskTitle(p[0].title);
+              setActiveTaskTitle(p[0].title);
               setEditableTaskTitle(p[0].title);
               setEditableDirective(p[0].writing_directive || "");
             }
@@ -386,7 +214,7 @@ export default function HomePage() {
             setPipelineStatus("waiting_for_approval");
             setStatusMessage("Paused — human review required");
             if (d.thread_id) setSessionId(d.thread_id);
-            if (d.target_task) setCurrentTaskTitle(d.target_task);
+            if (d.target_task) setActiveTaskTitle(d.target_task);
             if (d.plan?.[0]) {
               setEditableTaskTitle(d.plan[0].title || "");
               setEditableDirective(d.plan[0].writing_directive || "");
@@ -395,7 +223,7 @@ export default function HomePage() {
             setPipelineStatus("drafting");
             setStreamedProse((prev) => prev + d.content);
             if (d.sub_section) {
-              setCurrentTaskTitle(d.sub_section);
+              setActiveTaskTitle(d.sub_section);
               setPlan((prev) =>
                 prev.map((p) =>
                   p.title === d.sub_section ? { ...p, status: "in_progress" } : p
@@ -405,7 +233,7 @@ export default function HomePage() {
           } else if (d.type === "replan") {
             if (d.latest_summary) setPastSummaries((prev) => [...prev, d.latest_summary]);
             if (d.next_task) {
-              setCurrentTaskTitle(d.next_task);
+              setActiveTaskTitle(d.next_task);
               setEditableTaskTitle(d.next_task);
               setPlan((prev) =>
                 prev.map((p) => {
@@ -428,13 +256,13 @@ export default function HomePage() {
     }
   }
 
-  // ── Actions ─────────────────────────────────────────────────────────────────
+  // ── Actions ────────────────────────────────────────────────────────────────
   async function startGeneration() {
     setPipelineStatus("planning");
     setErrorMessage(null);
     setStreamedProse("");
     setPastSummaries([]);
-    setActiveTab("reader");
+    setActiveTab("editor");
     setStatusMessage("Connecting to LangGraph Pipeline...");
     abortRef.current = new AbortController();
     try {
@@ -464,7 +292,7 @@ export default function HomePage() {
     if (!sessionId) return;
     setPipelineStatus("drafting");
     setErrorMessage(null);
-    setActiveTab("reader");
+    setActiveTab("editor");
     abortRef.current = new AbortController();
     let updatedPlan = plan;
     if (applyEdits && plan.length > 0) {
@@ -506,7 +334,6 @@ export default function HomePage() {
     setStatusMessage("Generation paused.");
   }
 
-  // ── Derived Values ──────────────────────────────────────────────────────────
   const completedCount = plan.filter((p) => p.status === "completed").length;
   const inProgressCount = plan.filter((p) => p.status === "in_progress").length;
   const pendingCount = plan.filter((p) => p.status === "pending").length;
@@ -522,541 +349,484 @@ export default function HomePage() {
     return true;
   });
 
+  const handleCopyProse = () => {
+    navigator.clipboard.writeText(streamedProse);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
-    <div className="min-h-screen font-sans flex flex-col bg-[#F2F2F7]">
-      {/* ── Apple Translucent Glass Header ────────────────────────────────────── */}
-      <header className="h-20 apple-glass sticky top-0 z-50 flex items-center justify-between px-8 shadow-sm">
+    <div className="min-h-screen bg-gray-50 flex font-sans text-black">
+      {/* ── LEFT SIDEBAR (makemynotes style) ─────────────────────────────────── */}
+      <aside className="w-64 bg-white border-r border-black/10 flex flex-col hidden md:flex">
         {/* Brand */}
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-md shadow-blue-500/20">
-            S
-          </div>
+        <div className="p-6 border-b border-black/10 flex items-center justify-between">
           <div>
-            <p className="text-lg font-bold text-stone-900 leading-tight tracking-tight apple-heading">
-              Scriptorium
-            </p>
-            <p className="text-[11px] font-semibold text-stone-400 uppercase tracking-widest">
-              AI Book Writer &amp; Workspace
-            </p>
+            <span className="text-xl font-bold tracking-tight text-black block">
+              makemynotes
+            </span>
+            <span className="text-xs font-semibold text-orange-600 tracking-wider uppercase">
+              Scriptorium Writer
+            </span>
+          </div>
+          <div className="w-8 h-8 bg-orange-50 text-orange-600 rounded-lg flex items-center justify-center font-bold text-sm">
+            AI
           </div>
         </div>
 
-        {/* Workspace Segmented View Switcher */}
-        <div className="flex bg-stone-200/60 p-1 rounded-full text-xs font-bold shadow-inner">
+        {/* Navigation Items */}
+        <div className="flex-1 py-6 px-4 space-y-1.5 overflow-y-auto">
           <button
-            onClick={() => setActiveTab("grid")}
-            className={`px-5 py-2 rounded-full transition apple-pressable ${
-              activeTab === "grid"
-                ? "bg-white text-[#007AFF] shadow-sm font-extrabold"
-                : "text-stone-600 hover:text-stone-900"
+            onClick={() => setActiveTab("notes")}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
+              activeTab === "notes"
+                ? "bg-orange-50 text-orange-600 font-semibold"
+                : "text-black/70 hover:bg-black/5 hover:text-black"
             }`}
           >
-            Chapter Grid
+            <BookOpen className="w-5 h-5" />
+            My Chapters
           </button>
+
           <button
-            onClick={() => setActiveTab("reader")}
-            className={`px-5 py-2 rounded-full transition apple-pressable ${
-              activeTab === "reader"
-                ? "bg-white text-[#007AFF] shadow-sm font-extrabold"
-                : "text-stone-600 hover:text-stone-900"
+            onClick={() => setActiveTab("editor")}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
+              activeTab === "editor"
+                ? "bg-orange-50 text-orange-600 font-semibold"
+                : "text-black/70 hover:bg-black/5 hover:text-black"
             }`}
           >
-            Manuscript Reader
+            <FileText className="w-5 h-5" />
+            Draft Reader
           </button>
+
           <button
             onClick={() => setActiveTab("context")}
-            className={`px-5 py-2 rounded-full transition apple-pressable ${
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
               activeTab === "context"
-                ? "bg-white text-[#007AFF] shadow-sm font-extrabold"
-                : "text-stone-600 hover:text-stone-900"
+                ? "bg-orange-50 text-orange-600 font-semibold"
+                : "text-black/70 hover:bg-black/5 hover:text-black"
             }`}
           >
+            <Database className="w-5 h-5" />
             Context Bible (6)
           </button>
+
           <button
             onClick={() => setActiveTab("pipeline")}
-            className={`px-5 py-2 rounded-full transition apple-pressable ${
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
               activeTab === "pipeline"
-                ? "bg-white text-[#007AFF] shadow-sm font-extrabold"
-                : "text-stone-600 hover:text-stone-900"
+                ? "bg-orange-50 text-orange-600 font-semibold"
+                : "text-black/70 hover:bg-black/5 hover:text-black"
             }`}
           >
+            <Sliders className="w-5 h-5" />
             Pipeline Inspector
           </button>
-        </div>
 
-        {/* Global Primary Actions */}
-        <div className="flex items-center gap-3">
           <button
-            onClick={() => setShowConfig(!showConfig)}
-            className="px-4 py-2.5 rounded-full border border-stone-200 bg-white/80 hover:bg-white text-sm font-semibold text-stone-700 transition apple-pressable"
+            onClick={() => setActiveTab("settings")}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
+              activeTab === "settings"
+                ? "bg-orange-50 text-orange-600 font-semibold"
+                : "text-black/70 hover:bg-black/5 hover:text-black"
+            }`}
           >
-            {showConfig ? "Done" : "Config"}
+            <Settings className="w-5 h-5" />
+            Book Settings
           </button>
-
-          {pipelineStatus === "completed" && sessionId && (
-            <a
-              href={`http://localhost:8000/api/download/${sessionId}`}
-              download
-              className="px-5 py-2.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition apple-pressable shadow-sm"
-            >
-              Download .md
-            </a>
-          )}
-
-          {isRunning ? (
-            <button
-              onClick={handleStop}
-              className="px-5 py-2.5 rounded-full border border-rose-300 bg-rose-50 text-rose-600 font-bold text-sm hover:bg-rose-100 transition apple-pressable"
-            >
-              Pause
-            </button>
-          ) : pipelineStatus === "waiting_for_approval" ? (
-            <button
-              onClick={() => resumeGeneration(false)}
-              className="px-6 py-2.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition apple-pressable shadow-sm"
-            >
-              Approve Next
-            </button>
-          ) : (
-            <button
-              onClick={startGeneration}
-              className="px-6 py-2.5 rounded-full text-white font-bold text-sm transition apple-pressable shadow-md shadow-blue-500/20"
-              style={{ backgroundColor: ACCENT }}
-            >
-              Start Pipeline
-            </button>
-          )}
         </div>
-      </header>
 
-      {/* ── Translucent Config Drawer ────────────────────────────────────────── */}
-      <AnimatePresence>
-        {showConfig && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={APPLE_SPRING}
-            className="bg-white/90 backdrop-blur-xl border-b border-stone-200 overflow-hidden"
-          >
-            <div className="px-8 py-6 grid grid-cols-3 gap-6 max-w-4xl mx-auto">
-              {[
-                { label: "Book Title", val: bookTitle, set: setBookTitle },
-                { label: "Genre", val: genre, set: setGenre },
-                { label: "Premise", val: premise, set: setPremise },
-              ].map(({ label, val, set }) => (
-                <div key={label}>
-                  <label className="block text-[11px] font-bold uppercase tracking-widest text-stone-400 mb-2">
-                    {label}
-                  </label>
-                  <input
-                    value={val}
-                    onChange={(e) => set(e.target.value)}
-                    className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-stone-900 focus:outline-none focus:border-[#007AFF]"
-                  />
-                </div>
-              ))}
+        {/* Sidebar Status Widget */}
+        <div className="p-6 border-t border-black/10 bg-black/[0.02]">
+          <div className="flex items-center gap-2 mb-2">
+            <div
+              className={`w-2.5 h-2.5 rounded-full ${
+                isRunning
+                  ? "bg-orange-500 animate-pulse"
+                  : pipelineStatus === "completed"
+                  ? "bg-green-500"
+                  : "bg-black/20"
+              }`}
+            />
+            <span className="text-xs font-bold text-black uppercase tracking-wider">
+              {pipelineStatus}
+            </span>
+          </div>
+
+          <p className="text-xs text-black/60 leading-snug mb-3">{statusMessage}</p>
+
+          <div className="space-y-1">
+            <div className="flex justify-between text-xs font-semibold text-black/70">
+              <span>Overall Progress</span>
+              <span className="text-orange-600 font-bold">{progressPercent}%</span>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            <div className="w-full h-2 bg-black/10 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-orange-500 rounded-full transition-all duration-500"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      </aside>
 
-      {/* ── Error Banner ─────────────────────────────────────────────────────── */}
-      <AnimatePresence>
-        {errorMessage && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0 }}
-            className="mx-8 mt-4 px-6 py-4 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-between"
-          >
-            <span className="text-sm font-semibold text-rose-700">{errorMessage}</span>
-            <button
-              onClick={() => setErrorMessage(null)}
-              className="text-xs font-bold text-rose-500 hover:text-rose-800 uppercase tracking-wider"
-            >
-              Dismiss
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ── Main Workspace Body ──────────────────────────────────────────────── */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* ── Sidebar (30% Surface White) ────────────────────────────────────── */}
-        <aside className="w-80 shrink-0 bg-white/80 backdrop-blur-lg border-r border-stone-200/80 hidden lg:flex flex-col px-6 py-8 gap-8 overflow-y-auto">
-          {/* Pipeline Metric Widget */}
+      {/* ── MAIN CONTENT AREA (makemynotes style) ────────────────────────────── */}
+      <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+        {/* Mobile Header */}
+        <header className="md:hidden bg-white border-b border-black/10 p-4 flex items-center justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-stone-400 mb-3">
-              Manuscript Pipeline
-            </p>
-            <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200/80 space-y-3">
-              <div className="flex items-center gap-3">
-                <span
-                  className={`h-2.5 w-2.5 rounded-full ${
-                    isRunning
-                      ? "bg-blue-500 animate-pulse"
-                      : pipelineStatus === "completed"
-                      ? "bg-emerald-500"
-                      : "bg-amber-500"
-                  }`}
-                />
-                <span className="text-sm font-bold text-stone-800 leading-snug">
-                  {statusMessage}
-                </span>
-              </div>
-
-              {currentNode !== "idle" && (
-                <p className="text-xs font-mono text-stone-500 px-3 py-1.5 bg-white rounded-lg border border-stone-200/60">
-                  Node: {currentNode}
-                </p>
-              )}
-
-              <div className="pt-2 border-t border-stone-200/60">
-                <div className="flex justify-between text-xs text-stone-500 mb-1.5 font-semibold">
-                  <span>Overall Completion</span>
-                  <span className="text-stone-800 font-bold">{progressPercent}%</span>
-                </div>
-                <div className="h-2 bg-stone-200/60 rounded-full overflow-hidden">
-                  <motion.div
-                    className="h-full rounded-full"
-                    style={{ backgroundColor: ACCENT }}
-                    animate={{ width: `${progressPercent}%` }}
-                    transition={APPLE_SPRING}
-                  />
-                </div>
-              </div>
-            </div>
+            <span className="text-lg font-bold tracking-tight text-black">makemynotes</span>
+            <span className="text-xs font-bold text-orange-600 ml-2">Scriptorium</span>
           </div>
+          <button
+            onClick={() => setActiveTab(activeTab === "notes" ? "editor" : "notes")}
+            className="p-2 border border-black/10 rounded-lg text-xs font-semibold"
+          >
+            Switch View
+          </button>
+        </header>
 
-          <div className="border-t border-stone-100" />
-
-          {/* Quick Chapter Nav */}
-          <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-stone-400 mb-3">
-              Book Structure (5 Chapters)
-            </p>
-            <div className="space-y-1.5">
-              {plan.map((ch, idx) => (
-                <button
-                  key={ch.sub_section_id || idx}
-                  onClick={() => {
-                    setCurrentTaskTitle(ch.title);
-                    if (ch.draft_prose) setStreamedProse(ch.draft_prose);
-                    setActiveTab("reader");
-                  }}
-                  className={`w-full text-left p-3 rounded-xl transition text-xs flex items-center justify-between apple-pressable ${
-                    currentTaskTitle === ch.title
-                      ? "bg-blue-50/80 border border-blue-200/80 text-[#007AFF] font-bold"
-                      : "bg-stone-50/50 hover:bg-stone-100/70 border border-transparent text-stone-700 font-medium"
-                  }`}
-                >
-                  <span className="truncate pr-2">{ch.title}</span>
-                  <StatusPill status={ch.status} />
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="border-t border-stone-100" />
-
-          {/* HITL Review Panel */}
-          <AnimatePresence>
-            {pipelineStatus === "waiting_for_approval" && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={APPLE_SPRING}
-                className="p-5 rounded-2xl bg-amber-50/90 border border-amber-200 space-y-4"
-              >
-                <p className="text-xs font-bold uppercase tracking-widest text-amber-800">
-                  Review Required
-                </p>
-                <p className="text-xs text-amber-900 leading-relaxed">
-                  Review upcoming section instructions before authorizing generation.
-                </p>
-
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-widest text-amber-800 mb-1">
-                      Title
-                    </label>
-                    <input
-                      type="text"
-                      value={editableTaskTitle}
-                      onChange={(e) => setEditableTaskTitle(e.target.value)}
-                      className="w-full bg-white border border-amber-200 rounded-xl px-3 py-2 text-sm text-stone-900 focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-                  {editableDirective && (
-                    <div>
-                      <label className="block text-[10px] font-bold uppercase tracking-widest text-amber-800 mb-1">
-                        Directive
-                      </label>
-                      <textarea
-                        rows={3}
-                        value={editableDirective}
-                        onChange={(e) => setEditableDirective(e.target.value)}
-                        className="w-full bg-white border border-amber-200 rounded-xl px-3 py-2 text-sm text-stone-900 focus:outline-none focus:border-amber-400 resize-none"
-                      />
-                    </div>
-                  )}
-                </div>
-
-                <button
-                  onClick={() => resumeGeneration(false)}
-                  className="w-full py-2.5 rounded-xl text-white font-bold text-xs uppercase tracking-widest transition apple-pressable shadow-sm"
-                  style={{ backgroundColor: ACCENT }}
-                >
-                  Approve &amp; Draft
-                </button>
-                <button
-                  onClick={() => resumeGeneration(true)}
-                  className="w-full py-2.5 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold text-xs uppercase tracking-widest transition apple-pressable"
-                >
-                  Edit &amp; Continue
-                </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Stats Footer */}
-          <div className="mt-auto pt-6 border-t border-stone-100 space-y-2 text-xs text-stone-500">
-            <div className="flex justify-between">
-              <span>Total Drafted Words</span>
-              <span className="font-bold text-stone-800 tabular-nums">
-                {wordCount.toLocaleString()} words
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span>Target Manuscript Length</span>
-              <span className="font-bold text-stone-800 tabular-nums">12,500 words (50 pgs)</span>
-            </div>
-          </div>
-        </aside>
-
-        {/* ── Main Canvas (60% Off-White #F2F2F7) ─────────────────────────────── */}
-        <main className="flex-1 overflow-y-auto flex flex-col">
-          {/* Sub Header */}
-          <div className="bg-white/80 backdrop-blur-md border-b border-stone-200/80 px-8 py-4 flex items-center justify-between shrink-0">
+        {/* Main Content Container */}
+        <div className="flex-1 p-4 sm:p-8 max-w-6xl mx-auto w-full space-y-8">
+          {/* Header Bar */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-black/10 pb-6">
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-stone-400 mb-0.5">
+              <p className="text-xs font-bold text-orange-600 uppercase tracking-widest mb-1">
                 {genre}
               </p>
-              <h1 className="text-xl font-bold text-stone-900 tracking-tight apple-heading">
-                {bookTitle}
-              </h1>
+              <h1 className="text-3xl font-bold text-black mb-1">{bookTitle}</h1>
+              <p className="text-sm text-black/60">{premise}</p>
             </div>
 
-            {/* Filter Pill Controls */}
-            {activeTab === "grid" && (
-              <div className="flex bg-stone-100 p-1 rounded-full text-xs font-bold">
-                {(["all", "in_progress", "completed"] as FilterTab[]).map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => setFilterTab(t)}
-                    className={`px-4 py-1.5 rounded-full transition capitalize apple-pressable ${
-                      filterTab === t
-                        ? "bg-white text-[#007AFF] shadow-sm font-extrabold"
-                        : "text-stone-500 hover:text-stone-800"
-                    }`}
-                  >
-                    {t.replace("_", " ")}
-                  </button>
-                ))}
-              </div>
-            )}
+            <div className="flex items-center gap-3 shrink-0">
+              {pipelineStatus === "completed" && sessionId && (
+                <a
+                  href={`http://localhost:8000/api/download/${sessionId}`}
+                  download
+                  className="inline-flex items-center gap-2 px-5 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl transition-colors shadow-sm text-sm"
+                >
+                  <Download className="w-4 h-4" />
+                  Download Manuscript
+                </a>
+              )}
+
+              {isRunning ? (
+                <button
+                  onClick={handleStop}
+                  className="inline-flex items-center gap-2 px-5 py-3 bg-red-50 hover:bg-red-100 text-red-600 font-semibold rounded-xl transition-colors text-sm"
+                >
+                  <Pause className="w-4 h-4" />
+                  Pause
+                </button>
+              ) : pipelineStatus === "waiting_for_approval" ? (
+                <button
+                  onClick={() => resumeGeneration(false)}
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-xl transition-colors shadow-sm text-sm"
+                >
+                  <Play className="w-4 h-4" />
+                  Approve Next Chapter
+                </button>
+              ) : (
+                <button
+                  onClick={startGeneration}
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-xl transition-colors shadow-sm text-sm active:scale-95"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  Generate Manuscript
+                </button>
+              )}
+            </div>
           </div>
 
-          {/* Canvas Tab Content */}
-          <div className="flex-1 p-8">
-            {/* ── TAB 1: Chapter Grid ── */}
-            {activeTab === "grid" && (
-              <div>
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <h2 className="text-lg font-bold text-stone-900 apple-heading">
-                      Manuscript Chapters
-                    </h2>
-                    <p className="text-xs text-stone-500">
-                      Click any section card to preview draft prose or modify directives.
-                    </p>
-                  </div>
-                  <div className="text-xs font-bold text-stone-500 bg-white border border-stone-200 px-4 py-2 rounded-full shadow-sm">
-                    {completedCount} / {plan.length} Chapters Completed
-                  </div>
+          {/* Error Notice */}
+          {errorMessage && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-2xl flex items-center justify-between text-sm text-red-700">
+              <span>{errorMessage}</span>
+              <button
+                onClick={() => setErrorMessage(null)}
+                className="font-bold text-red-500 hover:text-red-800 text-xs uppercase"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+
+          {/* ── TAB 1: MY CHAPTERS (Notes Grid) ─────────────────────────────── */}
+          {activeTab === "notes" && (
+            <div className="space-y-6">
+              {/* Search & Filter Row */}
+              <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-between">
+                <div className="relative flex-1 max-w-lg">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-black/40" />
+                  <input
+                    type="text"
+                    placeholder="Search chapters by title or keywords..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-12 pr-4 py-3 bg-white border border-black/10 rounded-2xl focus:outline-none focus:border-orange-500 transition-colors shadow-sm text-black text-sm"
+                  />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {filteredPlan.map((item) => {
-                    const gi = plan.indexOf(item);
-                    return (
-                      <SectionCard
-                        key={item.sub_section_id || gi}
-                        item={item}
-                        index={gi}
-                        isReviewMode={pipelineStatus === "waiting_for_approval"}
-                        onApprove={() => resumeGeneration(false)}
-                        onProseClick={() => {
-                          setCurrentTaskTitle(item.title);
-                          if (item.draft_prose) setStreamedProse(item.draft_prose);
-                          setActiveTab("reader");
-                        }}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* ── TAB 2: Manuscript Reader / Editor ── */}
-            {activeTab === "reader" && (
-              <div className="max-w-3xl mx-auto">
-                <div className="bg-white rounded-3xl border border-stone-200/80 shadow-sm p-10 md:p-14">
-                  <div className="flex items-start justify-between mb-8 pb-6 border-b border-stone-100 gap-4">
-                    <div>
-                      <p className="text-xs font-bold uppercase tracking-widest text-stone-400 mb-1">
-                        Active Chapter Draft
-                      </p>
-                      <h2 className="text-2xl font-bold text-stone-900 apple-heading">
-                        {currentTaskTitle}
-                      </h2>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {pipelineStatus === "drafting" ? (
-                        <span
-                          className="px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest text-white shadow-sm"
-                          style={{ backgroundColor: ACCENT }}
-                        >
-                          Streaming Live
-                        </span>
-                      ) : (
-                        <button
-                          onClick={() => {
-                            navigator.clipboard.writeText(streamedProse);
-                            alert("Copied manuscript prose to clipboard!");
-                          }}
-                          className="px-4 py-2 rounded-full border border-stone-200 text-xs font-bold text-stone-700 hover:bg-stone-50 transition apple-pressable"
-                        >
-                          Copy Markdown
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="apple-serif text-stone-800 leading-[1.9] text-lg whitespace-pre-wrap">
-                    {streamedProse || (
-                      <span className="text-stone-400 italic">
-                        No draft prose streaming yet. Click "Start Pipeline" or "Approve Next" in the header to generate this chapter.
-                      </span>
-                    )}
-                    {pipelineStatus === "drafting" && (
-                      <motion.span
-                        animate={{ opacity: [1, 0] }}
-                        transition={{ repeat: Infinity, duration: 0.65 }}
-                        className="inline-block w-2.5 h-6 ml-1 align-middle rounded-sm"
-                        style={{ backgroundColor: ACCENT }}
-                      />
-                    )}
-                  </div>
-                  <div ref={proseEnd} />
-                </div>
-              </div>
-            )}
-
-            {/* ── TAB 3: Context Bible ── */}
-            {activeTab === "context" && (
-              <div className="max-w-4xl mx-auto">
-                <div className="mb-6">
-                  <h2 className="text-xl font-bold text-stone-900 apple-heading">
-                    Persistent Context Anchor Knowledge Files
-                  </h2>
-                  <p className="text-xs text-stone-500">
-                    These 6 files are loaded into GPT-4o's system prompt to prevent hallucination across chapter runs.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {CONTEXT_DOCS.map((doc, idx) => (
-                    <div
-                      key={idx}
-                      className="p-5 rounded-2xl bg-white border border-stone-200/80 shadow-sm hover:shadow-md transition apple-pressable flex flex-col justify-between"
+                <div className="flex items-center p-1 bg-black/5 rounded-xl self-start sm:self-auto">
+                  {(["all", "in_progress", "completed"] as FilterTab[]).map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => setFilterTab(tab)}
+                      className={`px-4 py-2 rounded-lg text-xs font-semibold capitalize transition-colors ${
+                        filterTab === tab
+                          ? "bg-white text-black shadow-sm"
+                          : "text-black/60 hover:text-black"
+                      }`}
                     >
-                      <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-[10px] font-bold uppercase tracking-widest bg-blue-50 text-[#007AFF] px-2.5 py-1 rounded-full">
-                            {doc.tag}
-                          </span>
-                          <span className="text-xs font-mono text-stone-400">{doc.words}</span>
-                        </div>
-                        <h3 className="text-base font-bold text-stone-900 mb-1 apple-heading">
-                          {doc.title}
-                        </h3>
-                        <p className="text-xs font-mono text-stone-500">/docs/{doc.name}</p>
-                      </div>
-
-                      <div className="mt-4 pt-3 border-t border-stone-100 flex items-center justify-between text-xs text-stone-500 font-semibold">
-                        <span>Status: Active Anchor</span>
-                        <span className="text-[#007AFF] font-bold">Loaded into Memory</span>
-                      </div>
-                    </div>
+                      {tab.replace("_", " ")}
+                    </button>
                   ))}
                 </div>
               </div>
-            )}
 
-            {/* ── TAB 4: Pipeline Inspector ── */}
-            {activeTab === "pipeline" && (
-              <div className="max-w-3xl mx-auto">
-                <div className="bg-white rounded-3xl border border-stone-200/80 p-8 shadow-sm space-y-6">
-                  <div>
-                    <h2 className="text-xl font-bold text-stone-900 apple-heading mb-1">
-                      LangGraph Execution Graph
-                    </h2>
-                    <p className="text-xs text-stone-500">
-                      State machine flow with Redis persistence checkpoints and Human-in-the-Loop review nodes.
-                    </p>
-                  </div>
+              {/* Cards Grid */}
+              <div className="grid md:grid-cols-3 gap-6">
+                {filteredPlan.map((ch, idx) => {
+                  const isDone = ch.status === "completed";
+                  const isLive = ch.status === "in_progress";
 
-                  <div className="space-y-3 font-mono text-xs">
-                    {[
-                      { node: "plan_step", desc: "GPT-4o-mini generates sub-section JSON task queue" },
-                      { node: "human_review", desc: "HITL Interruption — user approves/edits task before execution" },
-                      { node: "research_step", desc: "Tavily Web Search gathers live empirical facts & case studies" },
-                      { node: "execute_step", desc: "GPT-4o drafts 1,200–2,500 word prose & streams tokens via SSE" },
-                      { node: "replan_step", desc: "GPT-4o-mini compresses draft into 150-word summary, appends to full_manuscript" },
-                      { node: "front_matter_step", desc: "Generates Preface, Title Page, Table of Contents" },
-                      { node: "back_matter_step", desc: "Generates Conclusion, Glossary, Acknowledgments" },
-                      { node: "compile_book_step", desc: "Writes complete manuscript to backend/output/<Title>_Final.md" },
-                    ].map((step, idx) => (
-                      <div
-                        key={idx}
-                        className={`p-4 rounded-xl border flex items-center justify-between ${
-                          currentNode === step.node
-                            ? "bg-blue-50 border-[#007AFF] text-[#007AFF] font-bold shadow-sm"
-                            : "bg-stone-50 border-stone-200/60 text-stone-700"
-                        }`}
-                      >
-                        <div>
-                          <span className="font-bold font-mono">{idx + 1}. {step.node}</span>
-                          <p className="font-sans text-xs text-stone-500 mt-0.5">{step.desc}</p>
+                  return (
+                    <div
+                      key={ch.sub_section_id || idx}
+                      onClick={() => {
+                        setActiveTaskTitle(ch.title);
+                        if (ch.draft_prose) setStreamedProse(ch.draft_prose);
+                        setActiveTab("editor");
+                      }}
+                      className="bg-white border border-black/10 rounded-2xl p-6 hover:border-orange-500 transition-all cursor-pointer group shadow-sm flex flex-col justify-between"
+                    >
+                      <div>
+                        {/* Icon Badge */}
+                        <div className="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center mb-4 group-hover:bg-orange-500 transition-colors">
+                          <FileText className="w-6 h-6 text-orange-600 group-hover:text-white transition-colors" />
                         </div>
-                        {currentNode === step.node && (
-                          <span className="px-2.5 py-1 bg-blue-500 text-white rounded-full text-[10px] font-bold uppercase tracking-wider">
-                            Active
+
+                        <h3 className="text-lg font-bold text-black mb-1 group-hover:text-orange-600 transition-colors leading-snug">
+                          {ch.title}
+                        </h3>
+
+                        <p className="text-sm text-black/60 mb-4 line-clamp-3 leading-relaxed">
+                          {ch.one_sentence_summary || ch.writing_directive}
+                        </p>
+                      </div>
+
+                      <div className="pt-4 border-t border-black/5 flex items-center justify-between text-xs font-medium text-black/40">
+                        <span>{(ch.target_word_count || 2500).toLocaleString()} words</span>
+
+                        {isDone ? (
+                          <span className="text-green-600 bg-green-50 px-2.5 py-1 rounded-md font-semibold">
+                            Completed
+                          </span>
+                        ) : isLive ? (
+                          <span className="text-orange-600 bg-orange-50 px-2.5 py-1 rounded-md font-semibold animate-pulse">
+                            Drafting Live
+                          </span>
+                        ) : (
+                          <span className="text-black/40 bg-black/5 px-2.5 py-1 rounded-md font-semibold">
+                            Queued
                           </span>
                         )}
                       </div>
-                    ))}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ── TAB 2: DRAFT READER ─────────────────────────────────────────── */}
+          {activeTab === "editor" && (
+            <div className="max-w-4xl mx-auto space-y-6">
+              <div className="bg-white border border-black/10 rounded-3xl p-8 sm:p-12 shadow-sm space-y-6">
+                <div className="flex items-center justify-between pb-6 border-b border-black/10">
+                  <div>
+                    <span className="text-xs font-bold text-orange-600 uppercase tracking-widest block mb-1">
+                      Active Manuscript Chapter
+                    </span>
+                    <h2 className="text-2xl font-bold text-black">{activeTaskTitle}</h2>
                   </div>
+
+                  <button
+                    onClick={handleCopyProse}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-black/5 hover:bg-black/10 text-black font-semibold rounded-xl text-xs transition-colors"
+                  >
+                    {copied ? (
+                      <>
+                        <Check className="w-4 h-4 text-green-600" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-4 h-4" />
+                        Copy Markdown
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <div className="prose-reader whitespace-pre-wrap">
+                  {streamedProse || (
+                    <p className="text-black/40 italic">
+                      No prose streamed yet. Click "Generate Manuscript" to start the pipeline.
+                    </p>
+                  )}
+                  {pipelineStatus === "drafting" && (
+                    <span className="inline-block w-2 h-5 ml-1 bg-orange-500 animate-pulse align-middle" />
+                  )}
+                </div>
+                <div ref={proseEndRef} />
+              </div>
+            </div>
+          )}
+
+          {/* ── TAB 3: CONTEXT BIBLE (6 Anchor Files) ────────────────────────── */}
+          {activeTab === "context" && (
+            <div className="max-w-4xl mx-auto space-y-6">
+              <div>
+                <h2 className="text-2xl font-bold text-black mb-1">Context Anchor Knowledge Database</h2>
+                <p className="text-black/60">
+                  These 6 Markdown documents in the <code className="bg-black/5 px-2 py-0.5 rounded text-orange-600 font-mono text-sm">/docs</code> folder are injected into every LLM prompt to eliminate hallucination.
+                </p>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-6">
+                {CONTEXT_FILES.map((file, idx) => (
+                  <div
+                    key={idx}
+                    className="bg-white border border-black/10 rounded-2xl p-6 shadow-sm hover:border-orange-500 transition-colors flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-xs font-bold text-orange-600 bg-orange-50 px-2.5 py-1 rounded-md">
+                          {file.type}
+                        </span>
+                        <span className="text-xs font-mono text-black/40">{file.size}</span>
+                      </div>
+                      <h3 className="text-lg font-bold text-black mb-1">{file.label}</h3>
+                      <p className="text-xs font-mono text-black/50">/docs/{file.name}</p>
+                    </div>
+
+                    <div className="mt-6 pt-4 border-t border-black/5 flex items-center justify-between text-xs font-medium text-black/50">
+                      <span>Status: System Anchor</span>
+                      <span className="text-green-600 font-bold">Active in Memory</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── TAB 4: PIPELINE INSPECTOR ─────────────────────────────────────── */}
+          {activeTab === "pipeline" && (
+            <div className="max-w-4xl mx-auto space-y-6">
+              <div>
+                <h2 className="text-2xl font-bold text-black mb-1">LangGraph Execution Inspector</h2>
+                <p className="text-black/60">
+                  State machine graph nodes with Redis checkpoint persistence and Human-in-the-Loop review points.
+                </p>
+              </div>
+
+              <div className="bg-white border border-black/10 rounded-3xl p-8 shadow-sm space-y-4 font-mono text-xs">
+                {[
+                  { name: "plan_step", role: "GPT-4o-mini generates 5-chapter sub-section JSON plan" },
+                  { name: "human_review", role: "HITL Interruption — User approves or edits next chapter directive" },
+                  { name: "research_step", role: "Tavily Search Agent gathers empirical studies & case facts" },
+                  { name: "execute_step", role: "GPT-4o drafts 2,500-word prose & streams tokens live via SSE" },
+                  { name: "replan_step", role: "GPT-4o-mini compresses draft into 150-word summary, clears context" },
+                  { name: "front_matter_step", role: "Generates Preface, Note on Neuroscience, Table of Contents" },
+                  { name: "back_matter_step", role: "Generates Conclusion, Glossary, Acknowledgments" },
+                  { name: "compile_book_step", role: "Compiles full manuscript to backend/output/<Title>_Final.md" },
+                ].map((step, i) => (
+                  <div
+                    key={i}
+                    className={`p-4 rounded-2xl border flex items-center justify-between transition-colors ${
+                      currentNode === step.name
+                        ? "bg-orange-50 border-orange-500 text-orange-600 font-bold"
+                        : "bg-black/[0.02] border-black/5 text-black/80"
+                    }`}
+                  >
+                    <div>
+                      <span className="font-bold text-sm block mb-0.5">{i + 1}. {step.name}</span>
+                      <span className="font-sans text-xs text-black/60">{step.role}</span>
+                    </div>
+                    {currentNode === step.name && (
+                      <span className="px-3 py-1 bg-orange-500 text-white rounded-full text-xs font-bold uppercase tracking-wider">
+                        Running
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── TAB 5: BOOK SETTINGS ─────────────────────────────────────────── */}
+          {activeTab === "settings" && (
+            <div className="max-w-4xl mx-auto space-y-6">
+              <div>
+                <h2 className="text-2xl font-bold text-black mb-1">Book Configuration</h2>
+                <p className="text-black/60">Configure metadata for your book project.</p>
+              </div>
+
+              <div className="bg-white border border-black/10 rounded-3xl p-8 shadow-sm space-y-6">
+                <div>
+                  <label className="block text-sm font-bold text-black uppercase tracking-wider mb-2">
+                    Book Title
+                  </label>
+                  <input
+                    type="text"
+                    value={bookTitle}
+                    onChange={(e) => setBookTitle(e.target.value)}
+                    className="w-full p-4 bg-black/5 border border-transparent rounded-2xl focus:bg-white focus:border-orange-500 focus:outline-none transition-colors text-black font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-black uppercase tracking-wider mb-2">
+                    Genre / Field
+                  </label>
+                  <input
+                    type="text"
+                    value={genre}
+                    onChange={(e) => setGenre(e.target.value)}
+                    className="w-full p-4 bg-black/5 border border-transparent rounded-2xl focus:bg-white focus:border-orange-500 focus:outline-none transition-colors text-black font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-black uppercase tracking-wider mb-2">
+                    Core Premise & Thesis
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={premise}
+                    onChange={(e) => setPremise(e.target.value)}
+                    className="w-full p-4 bg-black/5 border border-transparent rounded-2xl focus:bg-white focus:border-orange-500 focus:outline-none transition-colors text-black font-medium resize-none"
+                  />
+                </div>
+
+                <div className="pt-4 border-t border-black/10 flex justify-end">
+                  <button
+                    onClick={() => {
+                      alert("Settings updated successfully!");
+                      setActiveTab("notes");
+                    }}
+                    className="px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-xl transition-colors shadow-sm text-sm"
+                  >
+                    Save Changes
+                  </button>
                 </div>
               </div>
-            )}
-          </div>
-        </main>
-      </div>
+            </div>
+          )}
+        </div>
+      </main>
     </div>
   );
 }
