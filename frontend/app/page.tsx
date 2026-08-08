@@ -20,6 +20,8 @@ import {
   GitCommit,
   CheckCircle,
   Zap,
+  Eye,
+  X,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -39,10 +41,13 @@ type FilterTab = "all" | "in_progress" | "completed";
 interface SubSectionTask {
   sub_section_id?: string;
   chapter_number?: number;
+  sub_section_number?: number;
   title: string;
   target_word_count?: number;
   one_sentence_summary?: string;
+  key_events?: string[];
   writing_directive?: string;
+  continuity_hooks?: string[];
   status?: "pending" | "in_progress" | "completed";
   draft_prose?: string;
 }
@@ -110,9 +115,9 @@ function InProgressIcon() {
 }
 
 // Circle Check Filled Icon (https://www.svgrepo.com/svg/500507/circle-check-filled)
-function CircleCheckFilledIcon() {
+function CircleCheckFilledIcon({ className = "w-3.5 h-3.5 text-green-600 inline-block align-middle fill-current shrink-0" }: { className?: string }) {
   return (
-    <svg className="w-3.5 h-3.5 text-green-600 inline-block align-middle fill-current shrink-0" viewBox="0 0 24 24">
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
       <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
     </svg>
   );
@@ -150,6 +155,8 @@ export default function DashboardPage() {
   const [wordCount, setWordCount] = useState<number>(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showPlanReviewModal, setShowPlanReviewModal] = useState(false);
+  const [reviewViewMode, setReviewViewMode] = useState<"formatted" | "json">("formatted");
 
   // Form / Edit states
   const [editableTaskTitle, setEditableTaskTitle] = useState<string>("");
@@ -165,7 +172,30 @@ export default function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState("");
 
   const abortRef = useRef<AbortController | null>(null);
+  const isGeneratingRef = useRef<boolean>(false);
+  const autoResumeRef = useRef<boolean>(false);       // true after first approval
+  const hitlThreadIdRef = useRef<string>("");          // thread to auto-resume
   const proseEndRef = useRef<HTMLDivElement | null>(null);
+  const sessionIdRef = useRef<string>("");
+
+  const updateSessionId = (id: string) => {
+    if (!id) return;
+    sessionIdRef.current = id;
+    setSessionId(id);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("writer_session_id", id);
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("writer_session_id");
+      if (saved) {
+        sessionIdRef.current = saved;
+        setSessionId(saved);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     if (pipelineStatus === "drafting") {
@@ -197,7 +227,9 @@ export default function DashboardPage() {
         if (!t.startsWith("data: ")) continue;
         try {
           const d = JSON.parse(t.slice(6));
-          if (d.session_id && !sessionId) setSessionId(d.session_id);
+          if (d.session_id || d.thread_id) {
+            updateSessionId(d.session_id || d.thread_id);
+          }
 
           if (d.type === "status") {
             setStatusMessage(d.message || d.status);
@@ -217,10 +249,14 @@ export default function DashboardPage() {
           } else if (d.type === "plan" && Array.isArray(d.plan)) {
             const p: SubSectionTask[] = d.plan.map((it: any, idx: number) => ({
               sub_section_id: it.sub_section_id || `sub-${idx}`,
+              chapter_number: it.chapter_number ?? idx,
+              sub_section_number: it.sub_section_number ?? 1,
               title: it.title || `Section ${idx + 1}`,
               one_sentence_summary: it.one_sentence_summary || "",
+              key_events: Array.isArray(it.key_events) ? it.key_events : [],
               writing_directive: it.writing_directive || "",
-              target_word_count: it.target_word_count || 1200,
+              continuity_hooks: Array.isArray(it.continuity_hooks) ? it.continuity_hooks : [],
+              target_word_count: it.target_word_count || 750,
               status: idx === 0 ? "in_progress" : "pending",
             }));
             setPlan(p);
@@ -230,13 +266,21 @@ export default function DashboardPage() {
               setEditableDirective(p[0].writing_directive || "");
             }
           } else if (d.type === "hitl_pause") {
-            setPipelineStatus("waiting_for_approval");
-            setStatusMessage("Paused — human review required");
-            if (d.thread_id) setSessionId(d.thread_id);
-            if (d.target_task) setActiveTaskTitle(d.target_task);
-            if (d.plan?.[0]) {
-              setEditableTaskTitle(d.plan[0].title || "");
-              setEditableDirective(d.plan[0].writing_directive || "");
+            const threadId = d.thread_id || d.session_id || sessionIdRef.current;
+            if (threadId) updateSessionId(threadId);
+            if (autoResumeRef.current) {
+              // After first approval: silently store thread and auto-resume after stream ends
+              hitlThreadIdRef.current = threadId;
+              setStatusMessage("Continuing next chapter...");
+            } else {
+              // First pause — show outline for review
+              setPipelineStatus("waiting_for_approval");
+              setStatusMessage("Outline & Plan generated — Review below and click 'Approve & Start Drafting'");
+              if (d.target_task) setActiveTaskTitle(d.target_task);
+              if (d.plan?.[0]) {
+                setEditableTaskTitle(d.plan[0].title || "");
+                setEditableDirective(d.plan[0].writing_directive || "");
+              }
             }
           } else if (d.type === "token") {
             setPipelineStatus("drafting");
@@ -277,13 +321,18 @@ export default function DashboardPage() {
 
   // ── Actions ────────────────────────────────────────────────────────────────
   async function startGeneration() {
+    if (isGeneratingRef.current) return;  // guard against double-calls
+    isGeneratingRef.current = true;
+    abortRef.current?.abort(); // cancel any prior stream
+    const controller = new AbortController();
+    abortRef.current = controller;
     setPipelineStatus("planning");
     setErrorMessage(null);
     setStreamedProse("");
+    setPlan([]);
     setPastSummaries([]);
     setActiveTab("editor");
-    setStatusMessage("Connecting to LangGraph Pipeline...");
-    abortRef.current = new AbortController();
+    setStatusMessage("Connecting to AI pipeline...");
     try {
       const res = await fetch("/api/write", {
         method: "POST",
@@ -295,24 +344,43 @@ export default function DashboardPage() {
           target_audience: "Leaders, Executives, and Personal Growth Seekers",
           total_chapters: 5,
         }),
-        signal: abortRef.current.signal,
+        signal: controller.signal,
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        console.error("[startGeneration] HTTP Error", res.status, body);
+        throw new Error(`HTTP ${res.status}: ${body.slice(0, 200)}`);
+      }
       await readSSEStream(res);
     } catch (e: any) {
       if (e.name !== "AbortError") {
-        setErrorMessage(e.message);
+        console.error("[startGeneration] Error:", e);
+        setErrorMessage(e.message || String(e));
         setPipelineStatus("idle");
       }
+    } finally {
+      isGeneratingRef.current = false;
     }
   }
 
-  async function resumeGeneration(applyEdits = false) {
-    if (!sessionId) return;
+  async function resumeGenerationWithId(targetThreadId?: string, applyEdits = false) {
+    const threadId =
+      targetThreadId ||
+      sessionId ||
+      sessionIdRef.current ||
+      (typeof window !== "undefined" ? localStorage.getItem("writer_session_id") : null) ||
+      "";
+    if (!threadId) {
+      setErrorMessage("No active session found. Please click 'Generate Manuscript' to start pipeline.");
+      return;
+    }
+    autoResumeRef.current = true;   // from now on, skip approval gate between chapters
+    hitlThreadIdRef.current = "";   // reset
     setPipelineStatus("drafting");
     setErrorMessage(null);
     setActiveTab("editor");
-    abortRef.current = new AbortController();
+    const controller = new AbortController();
+    abortRef.current = controller;
     let updatedPlan = plan;
     if (applyEdits && plan.length > 0) {
       updatedPlan = plan.map((p, i) =>
@@ -331,23 +399,41 @@ export default function DashboardPage() {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
         body: JSON.stringify({
-          thread_id: sessionId,
+          thread_id: threadId,
           plan: updatedPlan,
           past_steps: pastSummaries,
         }),
-        signal: abortRef.current.signal,
+        signal: controller.signal,
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        console.error("[resumeGeneration] HTTP Error", res.status, body);
+        throw new Error(`HTTP ${res.status}: ${body.slice(0, 200)}`);
+      }
       await readSSEStream(res);
+      // If we hit a mid-book HITL pause, auto-resume for the next chapter
+      if (hitlThreadIdRef.current && autoResumeRef.current && !controller.signal.aborted) {
+        const nextThread = hitlThreadIdRef.current;
+        hitlThreadIdRef.current = "";
+        await resumeGenerationWithId(nextThread, false);
+      }
     } catch (e: any) {
       if (e.name !== "AbortError") {
-        setErrorMessage(e.message);
+        console.error("[resumeGeneration] Error:", e);
+        setErrorMessage(e.message || String(e));
         setPipelineStatus("waiting_for_approval");
       }
     }
   }
 
+  async function resumeGeneration(applyEdits = false) {
+    return resumeGenerationWithId(undefined, applyEdits);
+  }
+
+
   function handleStop() {
+    autoResumeRef.current = false;  // cancel auto-resume loop
+    hitlThreadIdRef.current = "";
     abortRef.current?.abort();
     setPipelineStatus("idle");
     setStatusMessage("Generation paused.");
@@ -497,15 +583,34 @@ export default function DashboardPage() {
             </div>
 
             <div className="flex items-center gap-3 shrink-0">
-              {pipelineStatus === "completed" && sessionId && (
-                <a
-                  href={`http://localhost:8000/api/download/${sessionId}`}
-                  download
-                  className="inline-flex items-center gap-2 px-5 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl transition-colors shadow-sm text-sm"
+              {streamedProse.length > 0 && (
+                <button
+                  onClick={async () => {
+                    try {
+                      const res = await fetch("/api/download", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ prose: streamedProse, title: bookTitle }),
+                      });
+                      if (!res.ok) throw new Error(`PDF error: ${res.status}`);
+                      const blob = await res.blob();
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = `${bookTitle.replace(/\s+/g, "_")}_Final.pdf`;
+                      document.body.appendChild(a);
+                      a.click();
+                      a.remove();
+                      URL.revokeObjectURL(url);
+                    } catch (err: any) {
+                      alert("Download failed: " + err.message);
+                    }
+                  }}
+                  className="inline-flex items-center gap-2 px-5 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl transition-colors shadow-sm text-sm"
                 >
                   <Download className="w-4 h-4" />
-                  Download Manuscript
-                </a>
+                  Download Manuscript (PDF)
+                </button>
               )}
 
               {isRunning ? (
@@ -516,30 +621,53 @@ export default function DashboardPage() {
                   <Pause className="w-4 h-4" />
                   Pause
                 </button>
-              ) : pipelineStatus === "waiting_for_approval" ? (
+              ) : (plan.length > 0 && !streamedProse) ? (
                 <button
                   onClick={() => resumeGeneration(false)}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-xl transition-colors shadow-sm text-sm"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl transition-all shadow-md text-sm active:scale-95 animate-pulse"
                 >
-                  <Play className="w-4 h-4" />
-                  Approve Next Chapter
+                  <Play className="w-4 h-4 fill-white" />
+                  Approve & Start Drafting Prose
                 </button>
               ) : (
-                /* Pure text button (no icon) */
                 <button
                   onClick={startGeneration}
-                  className="inline-flex items-center justify-center px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-xl transition-colors shadow-sm text-sm active:scale-95"
+                  className="inline-flex items-center justify-center px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl transition-colors shadow-sm text-sm active:scale-95"
                 >
+                  <Play className="w-4 h-4 fill-white mr-2" />
                   Generate Manuscript
                 </button>
               )}
             </div>
           </div>
 
+          {/* Outline Review & Approval Banner */}
+          {(plan.length > 0 && !streamedProse && !isRunning) && (
+            <div className="p-6 bg-orange-50 border-2 border-orange-500/40 rounded-3xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm animate-fade-in">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 text-orange-800 font-bold text-sm">
+                  <span className="w-2.5 h-2.5 rounded-full bg-orange-500 animate-ping" />
+                  <span>Chapter Outline Ready ({plan.length} Sub-Sections Planned)</span>
+                </div>
+                <p className="text-xs text-black/70 font-medium">
+                  Review the chapter plan below. Click <strong className="text-orange-700 font-bold">Approve & Start Drafting Prose</strong> to allow GPT-4o to write the story prose.
+                </p>
+              </div>
+              <button
+                onClick={() => resumeGeneration(false)}
+                className="inline-flex items-center gap-2.5 px-6 py-3.5 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-2xl transition-all shadow-md hover:shadow-lg text-sm shrink-0 active:scale-95 animate-pulse"
+              >
+                <Play className="w-4 h-4 fill-white" />
+                Approve & Start Drafting Prose
+              </button>
+            </div>
+          )}
+
           {/* Error Notice */}
           {errorMessage && (
             <div className="p-4 bg-red-50 border border-red-200 rounded-2xl flex items-center justify-between text-sm text-red-700">
               <span>{errorMessage}</span>
+
               <button
                 onClick={() => setErrorMessage(null)}
                 className="font-bold text-red-500 hover:text-red-800 text-xs uppercase"
@@ -701,14 +829,133 @@ export default function DashboardPage() {
                   )}
                 </div>
 
-                <div className="prose-reader whitespace-pre-wrap">
-                  {streamedProse || (
-                    <p className="text-black/40 italic">
-                      No prose streamed yet. Click "Generate Manuscript" to start the pipeline.
-                    </p>
+                <div className="prose-reader whitespace-pre-wrap space-y-6">
+                  {/* 1. WHILE PLANNING / GENERATING OUTLINE: Show initial outline loader */}
+                  {(pipelineStatus === "planning" || pipelineStatus === "researching") && (
+                    <div className="p-8 bg-orange-50 border-2 border-orange-500/30 rounded-3xl flex items-center justify-center gap-3 animate-pulse">
+                      <div className="w-5 h-5 border-3 border-orange-500 border-t-transparent rounded-full animate-spin shrink-0" />
+                      <span className="font-bold text-orange-900 text-sm">Generating manuscript outline and chapter beats...</span>
+                    </div>
                   )}
-                  {pipelineStatus === "drafting" && (
-                    <span className="inline-block w-2 h-5 ml-1 bg-orange-500 animate-pulse align-middle" />
+
+                  {/* 2. WHILE DRAFTING PROSE (AFTER APPROVAL): Show ONLY Uiverse Book Loader + Progress Bar */}
+                  {(pipelineStatus === "drafting" || pipelineStatus === "summarizing" || pipelineStatus === "compiling") && (
+                    <div className="p-12 bg-gradient-to-b from-orange-50/70 via-white to-orange-50/40 border-2 border-orange-500/20 rounded-3xl space-y-8 shadow-xl flex flex-col items-center justify-center my-6 animate-fade-in">
+                      {/* Uiverse.io Book Loader Animation (by Nawsome) */}
+                      <div className="py-4">
+                        <div className="loader">
+                          <div>
+                            <ul>
+                              {[...Array(6)].map((_, i) => (
+                                <li key={i}>
+                                  <svg fill="currentColor" viewBox="0 0 90 120">
+                                    <path d="M90,0 L90,120 L11,120 C4.92486775,120 0,115.075132 0,109 L0,11 C0,4.92486775 4.92486775,0 11,0 L90,0 Z M71.5,81 L18.5,81 C17.1192881,81 16,82.1192881 16,83.5 C16,84.8254834 17.0315359,85.9100387 18.3356243,85.9946823 L18.5,86 L71.5,86 C72.8807119,86 74,84.8807119 74,83.5 C74,82.1745166 72.9684641,81.0899613 71.6643757,81.0053177 L71.5,81 Z M71.5,57 L18.5,57 C17.1192881,57 16,58.1192881 16,59.5 C16,60.8254834 17.0315359,61.9100387 18.3356243,61.9946823 L18.5,62 L71.5,62 C72.8807119,62 74,60.8807119 74,59.5 C74,58.1192881 72.8807119,57 71.5,57 Z M71.5,33 L18.5,33 C17.1192881,33 16,34.1192881 16,35.5 C16,36.8254834 17.0315359,37.9100387 18.3356243,37.9946823 L18.5,38 L71.5,38 C72.8807119,38 74,36.8807119 74,35.5 C74,34.1192881 72.8807119,33 71.5,33 Z"></path>
+                                  </svg>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Header Text */}
+                      <div className="text-center space-y-1.5 pt-2">
+                        <h3 className="text-2xl font-black text-orange-950 tracking-tight">Writing your book</h3>
+                        <p className="text-xs font-semibold text-black/50">GPT-4o is drafting story prose for all sub-sections...</p>
+                      </div>
+
+                      {/* Live 0-100% Progress Status Bar */}
+                      <div className="w-full max-w-lg space-y-3 bg-white p-5 rounded-2xl border border-orange-200/60 shadow-sm">
+                        <div className="flex items-center justify-between text-xs font-bold text-black">
+                          <span className="text-orange-900 truncate pr-2">{statusMessage || "Drafting sub-section prose..."}</span>
+                          <span className="bg-orange-500 text-white font-mono px-3 py-1 rounded-full text-xs font-bold shrink-0 shadow-sm">
+                            {progressPercent > 0 ? progressPercent : 33}%
+                          </span>
+                        </div>
+                        <div className="w-full bg-orange-100/70 rounded-full h-3.5 overflow-hidden p-0.5 border border-orange-200/50">
+                          <div
+                            className="bg-gradient-to-r from-orange-500 via-amber-500 to-orange-500 h-full rounded-full transition-all duration-500 ease-out shadow-sm"
+                            style={{
+                              width: `${progressPercent > 0 ? progressPercent : 33}%`,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 3. MANUSCRIPT PROSE OR OUTLINE CARDS (WHEN NOT DRAFTING) */}
+                  {!["drafting", "summarizing", "compiling"].includes(pipelineStatus) && (
+                    <>
+                      {streamedProse ? (
+                        <div className="space-y-4">
+                          <div>{streamedProse}</div>
+                        </div>
+                      ) : plan.length > 0 ? (
+                        <div className="space-y-6">
+                          {plan.map((item, idx) => (
+                            <div
+                              key={idx}
+                              className="bg-black/[0.02] border border-black/10 rounded-3xl p-6 sm:p-8 space-y-5 hover:border-orange-500/50 transition-colors shadow-sm"
+                            >
+                              <div className="flex items-start justify-between gap-4 pb-4 border-b border-black/10">
+                                <div>
+                                  <span className="text-xs font-bold text-orange-600 uppercase tracking-widest block mb-1">
+                                    Chapter {item.chapter_number ?? idx}.{item.sub_section_number ?? 1}
+                                  </span>
+                                  <h3 className="text-xl font-bold text-black">{item.title}</h3>
+                                </div>
+                                <span className="text-xs font-bold text-black/60 bg-black/5 px-3 py-1.5 rounded-full shrink-0">
+                                  Target: {item.target_word_count || 750} words
+                                </span>
+                              </div>
+
+                              {item.one_sentence_summary && (
+                                <div>
+                                  <span className="text-xs font-bold text-black/50 uppercase tracking-wider block mb-1">
+                                    Chapter Core Summary
+                                  </span>
+                                  <p className="text-sm text-black/80 font-medium italic bg-white p-4 rounded-2xl border border-black/5 leading-relaxed">
+                                    "{item.one_sentence_summary}"
+                                  </p>
+                                </div>
+                              )}
+
+                              {item.key_events && item.key_events.length > 0 && (
+                                <div>
+                                  <span className="text-xs font-bold text-black/50 uppercase tracking-wider block mb-2">
+                                    Key Scene Beats & Events ({item.key_events.length})
+                                  </span>
+                                  <ul className="space-y-2 bg-white/80 p-4 rounded-2xl border border-black/5">
+                                    {item.key_events.map((beat, bIdx) => (
+                                      <li key={bIdx} className="flex items-start gap-2.5 text-xs text-black/80 font-medium">
+                                        <CircleCheckFilledIcon className="w-4 h-4 text-orange-600 shrink-0 mt-0.5" />
+                                        <span>{beat}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+
+                              {item.writing_directive && (
+                                <div>
+                                  <span className="text-xs font-bold text-black/50 uppercase tracking-wider block mb-1">
+                                    Writing Directive & Tone
+                                  </span>
+                                  <p className="text-xs text-black/70 bg-orange-50/50 p-3.5 rounded-xl border border-orange-200/40 font-mono">
+                                    {item.writing_directive}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-black/40 italic">
+                          No manuscript generated yet. Click "Generate Manuscript" above to start.
+                        </p>
+                      )}
+                    </>
                   )}
                 </div>
                 <div ref={proseEndRef} />

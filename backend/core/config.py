@@ -11,7 +11,7 @@ from pydantic import Field
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=("backend/.env", ".env"),
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
@@ -20,10 +20,11 @@ class Settings(BaseSettings):
     # ── OpenAI ────────────────────────────────────────────────────────────────
     openai_api_key: str = Field(..., description="OpenAI API key")
     openai_org_id: str = Field("", description="Optional OpenAI org ID")
+    tavily_api_key: str = Field("", description="Optional Tavily Search API key")
 
     # ── Model routing ─────────────────────────────────────────────────────────
     fast_model: str = Field("gpt-4o-mini", description="Cheap model for routing/summarisation")
-    creative_model: str = Field("gpt-4o", description="High-tier model for prose drafting")
+    creative_model: str = Field("gpt-4o-mini", description="High-tier model for prose drafting")
     fast_model_temperature: float = 0.2
     creative_model_temperature: float = 0.85
     max_tokens_per_segment: int = 1200      # prose tokens per LLM call

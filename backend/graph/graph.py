@@ -69,13 +69,8 @@ def build_plan_execute_graph() -> CompiledGraph:
     g.add_edge("back_matter_step", "compile_book_step")
     g.add_edge("compile_book_step", END)
 
-    # ── Checkpointer setup (Redis with MemorySaver fallback) ─────────────────
-    try:
-        checkpointer = make_checkpoint_saver()
-        logger.info("Using Redis checkpointer (AsyncRedisSaver)")
-    except Exception as exc:
-        logger.warning("Redis checkpointer unavailable (%s); falling back to MemorySaver", exc)
-        checkpointer = MemorySaver()
+    # ── Checkpointer setup (InMemorySaver for thread session state) ───────────
+    checkpointer = MemorySaver()
 
     compiled = g.compile(
         checkpointer=checkpointer,

@@ -51,7 +51,12 @@ app = FastAPI(
 # ─── CORS ─────────────────────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "*"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -142,24 +147,25 @@ async def run_graph_and_stream(
                 active_sub_section = next_task
                 yield f"data: {json.dumps({'type': 'replan', 'latest_summary': latest_summary, 'remaining_plan_count': len(plan), 'next_task': next_task, 'session_id': session_id})}\n\n"
 
-            # LLM Token Stream
+            # LLM Token Stream (only stream creative prose, not JSON planning tokens)
             elif kind == "on_chat_model_stream":
-                chunk = data.get("chunk")
-                if chunk and hasattr(chunk, "content") and chunk.content:
-                    content_str = str(chunk.content)
-                    yield f"data: {json.dumps({'type': 'token', 'content': content_str, 'node': current_node, 'sub_section': active_sub_section, 'session_id': session_id})}\n\n"
+                if current_node in ("execute_step", "front_matter_step", "back_matter_step"):
+                    chunk = data.get("chunk")
+                    if chunk and hasattr(chunk, "content") and chunk.content:
+                        content_str = str(chunk.content)
+                        yield f"data: {json.dumps({'type': 'token', 'content': content_str, 'node': current_node, 'sub_section': active_sub_section, 'session_id': session_id})}\n\n"
 
-        # Check graph state to see if interrupted before execute_step
+        # Check graph state to see if interrupted before research_step / execute_step
         graph_state = graph.get_state(config)
         if graph_state and graph_state.next:
             next_nodes = list(graph_state.next)
-            if "execute_step" in next_nodes:
+            if any(n in next_nodes for n in ("research_step", "execute_step")):
                 current_values = graph_state.values or {}
                 current_plan = current_values.get("plan", [])
                 past_steps = current_values.get("past_steps", [])
                 target_task = current_plan[0].get("title", "") if current_plan else ""
 
-                logger.info("HITL Interrupt reached before execute_step for thread %s", session_id)
+                logger.info("HITL Interrupt reached before %s for thread %s", next_nodes, session_id)
                 yield f"data: {json.dumps({'type': 'hitl_pause', 'status': 'waiting_for_approval', 'thread_id': session_id, 'session_id': session_id, 'target_task': target_task, 'plan': current_plan, 'past_steps': past_steps, 'message': 'Review Mode: AI is waiting for your approval or edits before drafting prose.'})}\n\n"
                 return
 
@@ -167,8 +173,10 @@ async def run_graph_and_stream(
         yield f"data: {json.dumps({'type': 'done', 'session_id': session_id, 'message': 'Book drafting complete!'})}\n\n"
 
     except Exception as exc:
-        logger.exception("Error in stream execution for session %s", session_id)
-        yield f"data: {json.dumps({'type': 'error', 'message': str(exc), 'session_id': session_id})}\n\n"
+        import traceback as _tb
+        full_tb = _tb.format_exc()
+        logger.error("STREAM ERROR for session %s:\n%s", session_id, full_tb)
+        yield f"data: {json.dumps({'type': 'error', 'message': f'{type(exc).__name__}: {exc}', 'session_id': session_id})}\n\n"
 
 
 # ─── Endpoints ────────────────────────────────────────────────────────────────
@@ -255,25 +263,107 @@ async def start_writing_get(
     return await start_writing(payload)
 
 
-@app.get("/api/download/{session_id}")
-async def download_manuscript(session_id: str):
-    """GET /api/download/{session_id} — Serves the compiled Markdown file for download."""
-    async with MemoryManager() as mem:
-        state = await mem.load_state(session_id)
-    if not state:
-        raise HTTPException(status_code=404, detail="Session not found")
-    
-    anchor = state.get("context_anchor", {})
-    title = anchor.get("title", "Untitled_Book") if isinstance(anchor, dict) else (getattr(anchor, "title", "Untitled_Book") if getattr(anchor, "title", None) else "Untitled_Book")
-    safe_title = "".join([c if c.isalnum() else "_" for c in title]).strip("_")
-    
-    output_dir = os.path.join(settings.base_dir, "output") if hasattr(settings, "base_dir") else os.path.join(os.getcwd(), "output")
-    file_path = os.path.join(output_dir, f"{safe_title}_Final.md")
-    
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="Manuscript file not found. Ensure the book has finished compiling.")
-        
-    return FileResponse(file_path, filename=f"{safe_title}_Final.md", media_type="text/markdown")
+
+
+class DownloadRequest(BaseModel):
+    prose: str = Field(..., description="The markdown manuscript prose to convert to PDF")
+    title: str = Field("The Power of Instinct", description="Book title")
+
+
+def _build_pdf_bytes(prose: str, title: str) -> bytes:
+    """Convert markdown prose string to PDF bytes using reportlab."""
+    from io import BytesIO
+    from reportlab.lib.pagesizes import letter
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
+    from reportlab.lib import colors
+
+    buf = BytesIO()
+    doc = SimpleDocTemplate(
+        buf, pagesize=letter,
+        rightMargin=54, leftMargin=54, topMargin=54, bottomMargin=54
+    )
+    styles = getSampleStyleSheet()
+
+    title_style = ParagraphStyle(
+        'BookTitle', parent=styles['Normal'],
+        fontName='Helvetica-Bold', fontSize=24, leading=30,
+        textColor=colors.HexColor("#1A1A1A"), alignment=TA_CENTER, spaceAfter=12
+    )
+    author_style = ParagraphStyle(
+        'AuthorMeta', parent=styles['Normal'],
+        fontName='Helvetica-Bold', fontSize=11, leading=15,
+        textColor=colors.HexColor("#EA580C"), alignment=TA_CENTER, spaceAfter=25
+    )
+    h1_style = ParagraphStyle(
+        'ChapterHeader', parent=styles['Heading1'],
+        fontName='Helvetica-Bold', fontSize=18, leading=22,
+        textColor=colors.HexColor("#0F172A"), spaceBefore=18, spaceAfter=10
+    )
+    h2_style = ParagraphStyle(
+        'SectionHeader', parent=styles['Heading2'],
+        fontName='Helvetica-Bold', fontSize=13, leading=17,
+        textColor=colors.HexColor("#1E293B"), spaceBefore=12, spaceAfter=6
+    )
+    body_style = ParagraphStyle(
+        'BodyProse', parent=styles['BodyText'],
+        fontName='Helvetica', fontSize=10, leading=15,
+        textColor=colors.HexColor("#334155"), alignment=TA_JUSTIFY, spaceAfter=8
+    )
+
+    story = []
+    story.append(Paragraph(title.upper(), title_style))
+    story.append(Paragraph(
+        "Thulane J. Sigasa, Author 2026 | +27 60 642 9587 | pharezsigasa@gmail.com",
+        author_style
+    ))
+    story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#CBD5E1"), spaceAfter=18))
+
+    for line in prose.split("\n"):
+        l = line.strip()
+        if not l:
+            story.append(Spacer(1, 4))
+            continue
+        # No em-dashes
+        l = l.replace("\u2014", " - ").replace("--", " - ")
+        if l.startswith("# "):
+            story.append(Paragraph(l[2:].strip(), title_style))
+        elif l.startswith("## "):
+            story.append(Paragraph(l[3:].strip(), h1_style))
+        elif l.startswith("### "):
+            story.append(Paragraph(l[4:].strip(), h2_style))
+        else:
+            import re as _re
+            # Escape XML special chars BEFORE inserting tags
+            safe = l.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            # Replace **text** with <b>text</b>
+            safe = _re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', safe)
+            story.append(Paragraph(safe, body_style))
+
+    doc.build(story)
+    return buf.getvalue()
+
+
+@app.post("/api/download")
+async def download_manuscript(payload: DownloadRequest):
+    """POST /api/download — Accepts manuscript markdown, returns a formatted PDF."""
+    import io
+    from fastapi.responses import Response
+
+    logger.info("download_manuscript | Generating PDF for title=%r (%d chars)", payload.title, len(payload.prose))
+    try:
+        pdf_bytes = _build_pdf_bytes(payload.prose, payload.title)
+        safe_title = "".join([c if c.isalnum() else "_" for c in payload.title]).strip("_")
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{safe_title}_Final.pdf"'},
+        )
+    except Exception as exc:
+        logger.exception("PDF generation failed: %s", exc)
+        raise HTTPException(status_code=500, detail=f"PDF generation failed: {exc}")
+
 
 
 @app.on_event("startup")

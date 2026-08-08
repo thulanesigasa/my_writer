@@ -41,6 +41,7 @@ _AUDIENCE_PERSONAS_PATH      = _REPO_ROOT / "docs" / "audience_personas.md"
 _STYLISTIC_EXAMPLES_PATH     = _REPO_ROOT / "docs" / "stylistic_examples.md"
 _FRONT_AND_BACK_MATTER_PATH  = _REPO_ROOT / "docs" / "front_and_back_matter.md"
 _EXPANSION_FRAMEWORK_PATH    = _REPO_ROOT / "docs" / "expansion_framework.md"
+_INSTRUCTIONS_PATH           = _REPO_ROOT / "docs" / "instructions.md"
 
 
 # ── Private helper ─────────────────────────────────────────────────────────────
@@ -131,6 +132,12 @@ def load_expansion_framework(path: Path | str | None = None) -> str:
     """Read expansion_framework.md and return it as a plain string."""
     target = Path(path) if path is not None else _EXPANSION_FRAMEWORK_PATH
     return _load_markdown_file(target, "Expansion Framework (expansion_framework.md)")
+
+
+def load_instructions(path: Path | str | None = None) -> str:
+    """Read instructions.md and return it as a plain string."""
+    target = Path(path) if path is not None else _INSTRUCTIONS_PATH
+    return _load_markdown_file(target, "Instructions (instructions.md)")
 
 
 # ── Master Context Loader ──────────────────────────────────────────────────────

@@ -12,10 +12,10 @@ langchain==0.3.25
 langchain-core==0.3.65
 langchain-openai==0.3.18
 langchain-community==0.3.25
-langchain-tavily==0.2.18
+langchain-tavily>=0.0.1
 
 # ─── OpenAI ───────────────────────────────────────────────────────────────────
-openai==1.40.0
+openai>=1.68.2,<2.0.0
 
 # ─── State & Memory ───────────────────────────────────────────────────────────
 redis==5.2.1

@@ -65,6 +65,7 @@ from backend.utils.utils import (
     load_case_studies,
     load_expansion_framework,
     load_front_and_back_matter,
+    load_instructions,
     load_stylistic_examples,
     load_system_rules,
 )
@@ -88,7 +89,7 @@ orchestration_llm = ChatOpenAI(
 #: High-capability model reserved exclusively for creative prose drafting.
 #: Temperature 0.7 provides creative range without incoherence.
 drafting_llm = ChatOpenAI(
-    model="gpt-4o",
+    model=settings.creative_model,
     temperature=0.7,
     api_key=settings.openai_api_key,
     max_tokens=settings.max_tokens_per_segment,
@@ -168,6 +169,8 @@ Produce the JSON plan now.
 
 
 _EXECUTE_SYSTEM = """\
+{instructions_text}
+
 {system_rules}
 
 {expansion_framework}
@@ -181,20 +184,22 @@ _EXECUTE_SYSTEM = """\
 {research_notes_block}
 
 ━━━ SUB-SECTION DRAFTING INSTRUCTIONS ━━━
-You are a professional author drafting ONLY THE SINGLE SUB-SECTION specified in the CURRENT TASK.
+You are professional author Thulane J. Sigasa drafting ONLY THE SINGLE SUB-SECTION specified in the CURRENT TASK.
 Tone: {tone} | POV: {pov} | Tense: {tense}
 
 1. WORD COUNT TARGET: You MUST write between 600 and 800 words for this sub-section. Do not write a brief summary.
-2. MANDATORY 6-STEP EXPANSION SEQUENCE: You must structure your sub-section prose using the exact sequence from expansion_framework.md:
+2. NO EM-DASHES: NEVER output em-dashes (— or --) in your prose or headings. Use commas, colons, or periods instead.
+3. SUB-HEADERS & TERMS: Format key terms like **Anterior Insula** purely as bold text (no quotation marks or italics).
+4. MANDATORY 6-STEP EXPANSION SEQUENCE: You must structure your sub-section prose using the exact sequence from expansion_framework.md:
    • Step 1: The Hook & Context (relatable scenario or historical anecdote)
    • Step 2: The Hard Science (neurobiology, pathways, mechanisms from research_database.md)
    • Step 3: The Analogy (concrete, non-clichéd metaphor)
    • Step 4: The Case Study (empirical proof from case_studies.md)
    • Step 5: The Counter-Argument / Misconception (debunking popular myths like the Lizard Brain)
    • Step 6: The Practical Application (actionable value for Jordan and Sam)
-3. Maintain strict continuity with the PAST STEPS summaries. Do not contradict established facts.
-4. Follow the writing_directive in the CURRENT TASK exactly. Cover ALL key_events listed.
-5. Output ONLY the prose for this sub-section — no meta-commentary, no JSON wrappers.
+5. Maintain strict continuity with the PAST STEPS summaries. Do not contradict established facts.
+6. Follow the writing_directive in the CURRENT TASK exactly. Cover ALL key_events listed.
+7. Output ONLY the prose for this sub-section — no meta-commentary, no JSON wrappers.
 """
 
 _EXECUTE_HUMAN = """\
@@ -454,12 +459,12 @@ async def execute_step(state: BookWriterState) -> dict:
     # ── Build prompt blocks ───────────────────────────────────────────────────
     anchor_block = build_context_anchor_block(anchor)
 
-    # Load all drafting guidance files fresh on every call
-    system_rules_text = load_system_rules()
-    expansion_framework_text = load_expansion_framework()
-    audience_personas_text = load_audience_personas()
-    stylistic_examples_text = load_stylistic_examples()
-    case_studies_text = load_case_studies()
+    # Load all drafting guidance files fresh on every call (compacted to prevent TPM limits)
+    system_rules_text = load_system_rules()[:1500]
+    expansion_framework_text = load_expansion_framework()[:1200]
+    audience_personas_text = load_audience_personas()[:1000]
+    stylistic_examples_text = load_stylistic_examples()[:1000]
+    case_studies_text = load_case_studies()[:1200]
 
     if past_steps:
         past_steps_block = "\n\n".join(
@@ -482,6 +487,7 @@ async def execute_step(state: BookWriterState) -> dict:
     # ── System prompt (guidance docs + craft rules) ───────────────────────────
     style = anchor.style_guide
     system_content = _EXECUTE_SYSTEM.format(
+        instructions_text=load_instructions(),
         system_rules=system_rules_text,
         expansion_framework=expansion_framework_text,
         audience_personas=audience_personas_text,
@@ -547,12 +553,18 @@ async def research_step(state: BookWriterState) -> dict:
     
     logger.info("research_step | Executing search query: %r", query)
     
-    tavily = TavilySearch(max_results=3, search_depth="advanced")
+    search_results = ""
     try:
-        search_results = await tavily.ainvoke({"query": query})
+        api_key = getattr(settings, "tavily_api_key", None) or os.getenv("TAVILY_API_KEY")
+        if api_key:
+            tavily = TavilySearch(tavily_api_key=api_key, max_results=3, search_depth="advanced")
+            search_results = await tavily.ainvoke({"query": query})
+        else:
+            logger.info("research_step | TAVILY_API_KEY not set — using AI domain knowledge fallback")
+            search_results = "No external web search key provided. Using internal knowledge base."
     except Exception as e:
-        logger.error("Tavily search failed: %s", e)
-        search_results = f"Search failed: {e}"
+        logger.warning("research_step | Tavily search skipped or failed: %s", e)
+        search_results = f"Search skipped: {e}"
 
     summary_prompt = f"Search query used: {query}\n\nResults:\n{search_results}\n\nExtract 3-5 factual pieces of information relevant to the sub-section '{title}'. Return ONLY the facts as a plain string, formatted as bullet points. Do not include introductory text."
     

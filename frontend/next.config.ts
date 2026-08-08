@@ -1,6 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Keep connections alive for SSE streaming
+  httpAgentOptions: {
+    keepAlive: true,
+  },
   async rewrites() {
     return [
       {
