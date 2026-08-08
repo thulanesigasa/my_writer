@@ -141,6 +141,8 @@ const CONTEXT_FILES = [
   { name: "expansion_framework.md", label: "Section Expansion Formula", size: "11.8 KB", type: "Framework" },
 ];
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
 export default function DashboardPage() {
   const [pipelineStatus, setPipelineStatus] = useState<PipelineStatus>("idle");
   const [statusMessage, setStatusMessage] = useState("Ready to generate");
@@ -334,7 +336,7 @@ export default function DashboardPage() {
     setActiveTab("editor");
     setStatusMessage("Connecting to AI pipeline...");
     try {
-      const res = await fetch("/api/write", {
+      const res = await fetch(`${API_BASE}/api/write`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
         body: JSON.stringify({
@@ -395,7 +397,7 @@ export default function DashboardPage() {
       setPlan(updatedPlan);
     }
     try {
-      const res = await fetch("/api/resume", {
+      const res = await fetch(`${API_BASE}/api/resume`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
         body: JSON.stringify({
@@ -587,7 +589,7 @@ export default function DashboardPage() {
                 <button
                   onClick={async () => {
                     try {
-                      const res = await fetch("/api/download", {
+                      const res = await fetch(`${API_BASE}/api/download`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ prose: streamedProse, title: bookTitle }),
