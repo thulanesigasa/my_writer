@@ -26,7 +26,7 @@ from backend.core.memory import MemoryManager
 from backend.core.state import initial_state
 from backend.graph.graph import graph
 from backend.utils.prompt_builder import build_review_payload
-from backend.utils.utils import load_full_context_string
+from backend.utils.utils import load_story_bible
 from backend.api.routes import books, stream, review, health
 
 # ─── Logging setup ────────────────────────────────────────────────────────────
@@ -231,7 +231,15 @@ async def resume_writing(payload: ResumeWritingRequest) -> StreamingResponse:
     # Build state updates from payload
     state_updates: dict[str, Any] = {}
     if payload.plan is not None:
-        state_updates["plan"] = payload.plan
+        graph_state = graph.get_state(config)
+        current_values = graph_state.values if graph_state else {}
+        past_count = len(current_values.get("past_steps", []))
+        if past_count > 0 and len(payload.plan) >= past_count:
+            logger.info("Slicing %d already completed tasks from payload plan", past_count)
+            state_updates["plan"] = payload.plan[past_count:]
+        else:
+            state_updates["plan"] = payload.plan
+
     if payload.past_steps is not None:
         state_updates["past_steps"] = payload.past_steps
     if payload.user_edits:

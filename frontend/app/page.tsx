@@ -402,7 +402,7 @@ export default function DashboardPage() {
         headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
         body: JSON.stringify({
           thread_id: threadId,
-          plan: updatedPlan,
+          plan: applyEdits ? updatedPlan : null,
           past_steps: pastSummaries,
         }),
         signal: controller.signal,
