@@ -1,13 +1,13 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   BookOpen,
   FilePlus,
   Settings,
   Search,
   FileText,
-  CheckCircle2,
   Clock,
   Loader2,
   Sliders,
@@ -15,9 +15,6 @@ import {
   Play,
   Pause,
   Database,
-  Layers,
-  Sparkles,
-  ArrowRight,
   Copy,
   Check,
 } from "lucide-react";
@@ -47,7 +44,7 @@ interface SubSectionTask {
   draft_prose?: string;
 }
 
-// ── Initial 5-Chapter Outline for "The Power of Instinct" ─────────────────────
+// ── Initial 5-Chapter Outline ─────────────────────────────────────────────────
 const INITIAL_PLAN: SubSectionTask[] = [
   {
     sub_section_id: "sec-1",
@@ -355,6 +352,14 @@ export default function DashboardPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const navItems = [
+    { id: "notes" as ActiveTab, label: "My Chapters", icon: BookOpen },
+    { id: "editor" as ActiveTab, label: "Draft Reader", icon: FileText },
+    { id: "context" as ActiveTab, label: "Context Bible (6)", icon: Database },
+    { id: "pipeline" as ActiveTab, label: "Pipeline Inspector", icon: Sliders },
+    { id: "settings" as ActiveTab, label: "Book Settings", icon: Settings },
+  ];
+
   return (
     <div className="min-h-screen bg-gray-50 flex font-sans text-black">
       {/* ── LEFT SIDEBAR (makemynotes style) ─────────────────────────────────── */}
@@ -374,67 +379,31 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Navigation Items */}
+        {/* Navigation Items with 150ms Sliding Active Pill */}
         <div className="flex-1 py-6 px-4 space-y-1.5 overflow-y-auto">
-          <button
-            onClick={() => setActiveTab("notes")}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
-              activeTab === "notes"
-                ? "bg-orange-50 text-orange-600 font-semibold"
-                : "text-black/70 hover:bg-black/5 hover:text-black"
-            }`}
-          >
-            <BookOpen className="w-5 h-5" />
-            My Chapters
-          </button>
-
-          <button
-            onClick={() => setActiveTab("editor")}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
-              activeTab === "editor"
-                ? "bg-orange-50 text-orange-600 font-semibold"
-                : "text-black/70 hover:bg-black/5 hover:text-black"
-            }`}
-          >
-            <FileText className="w-5 h-5" />
-            Draft Reader
-          </button>
-
-          <button
-            onClick={() => setActiveTab("context")}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
-              activeTab === "context"
-                ? "bg-orange-50 text-orange-600 font-semibold"
-                : "text-black/70 hover:bg-black/5 hover:text-black"
-            }`}
-          >
-            <Database className="w-5 h-5" />
-            Context Bible (6)
-          </button>
-
-          <button
-            onClick={() => setActiveTab("pipeline")}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
-              activeTab === "pipeline"
-                ? "bg-orange-50 text-orange-600 font-semibold"
-                : "text-black/70 hover:bg-black/5 hover:text-black"
-            }`}
-          >
-            <Sliders className="w-5 h-5" />
-            Pipeline Inspector
-          </button>
-
-          <button
-            onClick={() => setActiveTab("settings")}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
-              activeTab === "settings"
-                ? "bg-orange-50 text-orange-600 font-semibold"
-                : "text-black/70 hover:bg-black/5 hover:text-black"
-            }`}
-          >
-            <Settings className="w-5 h-5" />
-            Book Settings
-          </button>
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className={`relative w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors z-10 ${
+                  isActive ? "text-orange-600 font-semibold" : "text-black/70 hover:text-black"
+                }`}
+              >
+                {isActive && (
+                  <motion.div
+                    layoutId="activeSidebarTabPill"
+                    transition={{ duration: 0.15, ease: "easeOut" }}
+                    className="absolute inset-0 bg-orange-50 rounded-xl -z-10"
+                  />
+                )}
+                <Icon className="w-5 h-5" />
+                {item.label}
+              </button>
+            );
+          })}
         </div>
 
         {/* Sidebar Status Widget */}
@@ -472,7 +441,7 @@ export default function DashboardPage() {
       </aside>
 
       {/* ── MAIN CONTENT AREA (makemynotes style) ────────────────────────────── */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+      <main className="flex-1 flex flex-col min-w-0 min-h-screen">
         {/* Mobile Header */}
         <header className="md:hidden bg-white border-b border-black/10 p-4 flex items-center justify-between">
           <div>
@@ -488,7 +457,7 @@ export default function DashboardPage() {
         </header>
 
         {/* Main Content Container */}
-        <div className="flex-1 p-4 sm:p-8 max-w-6xl mx-auto w-full space-y-8">
+        <div className="flex-1 p-4 sm:p-8 max-w-6xl mx-auto w-full space-y-8 flex flex-col">
           {/* Header Bar */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-black/10 pb-6">
             <div>
@@ -528,11 +497,11 @@ export default function DashboardPage() {
                   Approve Next Chapter
                 </button>
               ) : (
+                /* NO ICON on Generate Manuscript button as requested */
                 <button
                   onClick={startGeneration}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-xl transition-colors shadow-sm text-sm active:scale-95"
+                  className="inline-flex items-center justify-center px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-xl transition-colors shadow-sm text-sm active:scale-95"
                 >
-                  <Sparkles className="w-4 h-4" />
                   Generate Manuscript
                 </button>
               )}
@@ -554,7 +523,7 @@ export default function DashboardPage() {
 
           {/* ── TAB 1: MY CHAPTERS (Notes Grid) ─────────────────────────────── */}
           {activeTab === "notes" && (
-            <div className="space-y-6">
+            <div className="space-y-6 flex-1">
               {/* Search & Filter Row */}
               <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-between">
                 <div className="relative flex-1 max-w-lg">
@@ -568,20 +537,29 @@ export default function DashboardPage() {
                   />
                 </div>
 
-                <div className="flex items-center p-1 bg-black/5 rounded-xl self-start sm:self-auto">
-                  {(["all", "in_progress", "completed"] as FilterTab[]).map((tab) => (
-                    <button
-                      key={tab}
-                      onClick={() => setFilterTab(tab)}
-                      className={`px-4 py-2 rounded-lg text-xs font-semibold capitalize transition-colors ${
-                        filterTab === tab
-                          ? "bg-white text-black shadow-sm"
-                          : "text-black/60 hover:text-black"
-                      }`}
-                    >
-                      {tab.replace("_", " ")}
-                    </button>
-                  ))}
+                {/* Segmented Filter Control with 150ms Sliding Active Pill */}
+                <div className="relative flex items-center p-1 bg-black/5 rounded-xl self-start sm:self-auto">
+                  {(["all", "in_progress", "completed"] as FilterTab[]).map((tab) => {
+                    const isActive = filterTab === tab;
+                    return (
+                      <button
+                        key={tab}
+                        onClick={() => setFilterTab(tab)}
+                        className={`relative px-5 py-2 rounded-lg text-xs font-semibold capitalize transition-colors z-10 ${
+                          isActive ? "text-black" : "text-black/60 hover:text-black"
+                        }`}
+                      >
+                        {isActive && (
+                          <motion.div
+                            layoutId="activeFilterPill"
+                            transition={{ duration: 0.15, ease: "easeOut" }}
+                            className="absolute inset-0 bg-white rounded-lg shadow-sm -z-10"
+                          />
+                        )}
+                        {tab.replace("_", " ")}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -642,7 +620,7 @@ export default function DashboardPage() {
 
           {/* ── TAB 2: DRAFT READER ─────────────────────────────────────────── */}
           {activeTab === "editor" && (
-            <div className="max-w-4xl mx-auto space-y-6">
+            <div className="max-w-4xl mx-auto space-y-6 flex-1 w-full">
               <div className="bg-white border border-black/10 rounded-3xl p-8 sm:p-12 shadow-sm space-y-6">
                 <div className="flex items-center justify-between pb-6 border-b border-black/10">
                   <div>
@@ -687,7 +665,7 @@ export default function DashboardPage() {
 
           {/* ── TAB 3: CONTEXT BIBLE (6 Anchor Files) ────────────────────────── */}
           {activeTab === "context" && (
-            <div className="max-w-4xl mx-auto space-y-6">
+            <div className="max-w-4xl mx-auto space-y-6 flex-1 w-full">
               <div>
                 <h2 className="text-2xl font-bold text-black mb-1">Context Anchor Knowledge Database</h2>
                 <p className="text-black/60">
@@ -724,7 +702,7 @@ export default function DashboardPage() {
 
           {/* ── TAB 4: PIPELINE INSPECTOR ─────────────────────────────────────── */}
           {activeTab === "pipeline" && (
-            <div className="max-w-4xl mx-auto space-y-6">
+            <div className="max-w-4xl mx-auto space-y-6 flex-1 w-full">
               <div>
                 <h2 className="text-2xl font-bold text-black mb-1">LangGraph Execution Inspector</h2>
                 <p className="text-black/60">
@@ -768,7 +746,7 @@ export default function DashboardPage() {
 
           {/* ── TAB 5: BOOK SETTINGS ─────────────────────────────────────────── */}
           {activeTab === "settings" && (
-            <div className="max-w-4xl mx-auto space-y-6">
+            <div className="max-w-4xl mx-auto space-y-6 flex-1 w-full">
               <div>
                 <h2 className="text-2xl font-bold text-black mb-1">Book Configuration</h2>
                 <p className="text-black/60">Configure metadata for your book project.</p>
@@ -825,6 +803,22 @@ export default function DashboardPage() {
               </div>
             </div>
           )}
+
+          {/* ── FOOTER ────────────────────────────────────────────────────────── */}
+          <footer className="mt-auto pt-8 border-t border-black/10 text-xs text-black/50 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+              <span className="font-bold text-black">makemynotes</span>
+              <span className="mx-1 text-orange-600 font-semibold">•</span>
+              <span>Scriptorium AI Book Writer Pipeline</span>
+            </div>
+            <div className="flex items-center gap-4 text-black/60 font-medium">
+              <span>LangGraph v0.2.73</span>
+              <span>•</span>
+              <span>GPT-4o Engine</span>
+              <span>•</span>
+              <span>Redis Checkpoints</span>
+            </div>
+          </footer>
         </div>
       </main>
     </div>
