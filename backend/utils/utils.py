@@ -32,16 +32,19 @@ logger = logging.getLogger(__name__)
 # Markdown files live at: <repo_root>/*.md
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
-_STORY_BIBLE_PATH            = _REPO_ROOT / "docs" / "story_bible.md"
-_RESEARCH_DATABASE_PATH      = _REPO_ROOT / "docs" / "research_database.md"
-_SYSTEM_RULES_PATH           = _REPO_ROOT / "docs" / "system_rules.md"
-_BOOK_OUTLINE_PATH           = _REPO_ROOT / "docs" / "book_outline.md"
-_CASE_STUDIES_PATH           = _REPO_ROOT / "docs" / "case_studies.md"
-_AUDIENCE_PERSONAS_PATH      = _REPO_ROOT / "docs" / "audience_personas.md"
-_STYLISTIC_EXAMPLES_PATH     = _REPO_ROOT / "docs" / "stylistic_examples.md"
-_FRONT_AND_BACK_MATTER_PATH  = _REPO_ROOT / "docs" / "front_and_back_matter.md"
-_EXPANSION_FRAMEWORK_PATH    = _REPO_ROOT / "docs" / "expansion_framework.md"
-_INSTRUCTIONS_PATH           = _REPO_ROOT / "docs" / "instructions.md"
+_DOCS_ROOT = _REPO_ROOT / "docs"
+_DEFAULT_BOOK_DIR = _DOCS_ROOT / "power_of_instinct"
+
+_STORY_BIBLE_PATH            = _DEFAULT_BOOK_DIR / "story_bible.md"
+_RESEARCH_DATABASE_PATH      = _DEFAULT_BOOK_DIR / "research_database.md"
+_SYSTEM_RULES_PATH           = _DEFAULT_BOOK_DIR / "system_rules.md"
+_BOOK_OUTLINE_PATH           = _DEFAULT_BOOK_DIR / "book_outline.md"
+_CASE_STUDIES_PATH           = _DEFAULT_BOOK_DIR / "case_studies.md"
+_AUDIENCE_PERSONAS_PATH      = _DEFAULT_BOOK_DIR / "audience_personas.md"
+_STYLISTIC_EXAMPLES_PATH     = _DEFAULT_BOOK_DIR / "stylistic_examples.md"
+_FRONT_AND_BACK_MATTER_PATH  = _DEFAULT_BOOK_DIR / "front_and_back_matter.md"
+_EXPANSION_FRAMEWORK_PATH    = _DEFAULT_BOOK_DIR / "expansion_framework.md"
+_INSTRUCTIONS_PATH           = _DEFAULT_BOOK_DIR / "instructions.md"
 
 
 # ── Private helper ─────────────────────────────────────────────────────────────
